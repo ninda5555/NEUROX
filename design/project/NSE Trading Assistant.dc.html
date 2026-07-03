@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<template id="__bundler_thumbnail" data-bg-color="#0A0E17">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#0A0E17"/>
+    <rect x="470" y="330" width="120" height="70" rx="16" fill="#8B5CF6" opacity="0.9"/>
+    <rect x="610" y="330" width="120" height="70" rx="16" fill="none" stroke="#2A3242" stroke-width="3"/>
+    <text x="600" y="470" font-family="monospace" font-size="46" font-weight="700" fill="#C4B5FD" text-anchor="middle">NSE</text>
+  </svg>
+</template>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: #0A0E17; color: #E6EAF2; font-family: 'Geist', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.09); border-radius: 6px; border: 2px solid #0A0E17; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+  @keyframes livepulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  input::placeholder { color: #4A5468; }
+</style>
+</helmet>
+<div style="min-height: 100vh; padding: 20px; background: radial-gradient(900px 520px at 12% -8%, rgba(99,102,241,0.16), transparent 62%), radial-gradient(1000px 560px at 92% 4%, rgba(139,92,246,0.15), transparent 60%), radial-gradient(1100px 640px at 50% 118%, rgba(16,185,129,0.10), transparent 60%), #06080E;">
+
+ <div style="max-width: 1460px; margin: 0 auto; display: flex; border-radius: 28px; overflow: hidden; border: 1px solid rgba(255,255,255,0.09); background: linear-gradient(180deg, rgba(16,21,34,0.86), rgba(10,13,22,0.92)); box-shadow: 0 50px 140px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.02) inset, 0 1px 0 rgba(255,255,255,0.05) inset;">
+
+  <!-- ===== LEFT ICON RAIL ===== -->
+  <aside style="width: 82px; flex-shrink: 0; background: rgba(255,255,255,0.015); border-right: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; align-items: center; padding: 22px 0; gap: 4px;">
+    <div style="width: 42px; height: 42px; border-radius: 13px; background: linear-gradient(150deg, #A78BFA, #7C3AED); display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', monospace; font-weight: 700; font-size: 18px; color: #fff; margin-bottom: 18px; box-shadow: 0 8px 24px rgba(139,92,246,0.45);">N</div>
+    <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+      <div onClick="{{ n.onClick }}" title="{{ n.label }}" style="display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 6px 0;">
+        <div style="width: 46px; height: 46px; border-radius: 14px; border: 1px solid {{ n.railBorder }}; background: {{ n.railBg }}; display: flex; align-items: center; justify-content: center; transition: all 0.15s; box-shadow: {{ n.railShadow }};">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="{{ n.fg }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.icon }}"></path></svg>
+        </div>
+        <span style="font-size: 9.5px; color: {{ n.fg }}; letter-spacing: 0.02em;">{{ n.label }}</span>
+      </div>
+    </sc-for>
+    <div style="flex: 1;"></div>
+    <div style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #8B5CF6); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: #fff;">A</div>
+  </aside>
+
+  <!-- ===== MAIN COLUMN ===== -->
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+
+  <!-- ===== TOP BAR ===== -->
+  <header style="position: sticky; top: 0; z-index: 40; backdrop-filter: blur(14px); background: rgba(12,16,26,0.72); border-bottom: 1px solid rgba(255,255,255,0.07);">
+    <div style="margin: 0 auto; padding: 16px 28px 12px; display: flex; align-items: center; gap: 24px;">
+      <!-- Brand -->
+      <div style="display: flex; align-items: center; gap: 12px; min-width: 220px;">
+        <div style="line-height: 1.2;">
+          <div style="font-size: 16px; font-weight: 600; letter-spacing: -0.01em;">NSE Trading Assistant</div>
+          <div style="font-size: 11px; color: #6B7488; font-weight: 400;">Signals &amp; paper trading · V1</div>
+        </div>
+      </div>
+
+      <!-- Mode toggle (top-center) -->
+      <div style="flex: 1; display: flex; justify-content: center;">
+        <div style="display: inline-flex; padding: 4px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;">
+          <sc-for list="{{ modeItems }}" as="m" hint-placeholder-count="2">
+            <button onClick="{{ m.onClick }}" style="border: none; cursor: pointer; padding: 8px 22px; border-radius: 9px; font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; transition: all 0.15s; background: {{ m.bg }}; color: {{ m.fg }}; box-shadow: {{ m.shadow }};">{{ m.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Right status pills -->
+      <div style="min-width: 220px; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 8px; background: rgba(139,92,246,0.10); border: 1px solid rgba(139,92,246,0.26);">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: #A78BFA; box-shadow: 0 0 8px rgba(167,139,250,0.9); animation: livepulse 1.8s ease-in-out infinite;"></span>
+          <span style="font-size: 11px; color: #C4B5FD; font-weight: 500;">WS live</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
+          <span style="font-size: 11px; color: #9AA3B5;">Token valid ·</span>
+          <span style="font-size: 11px; color: #E6EAF2; font-family: 'Geist Mono', monospace;">re-auth by 06:00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status strip row -->
+    <div style="margin: 0 auto; padding: 0 28px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); font-size: 12px; color: #9AA3B5;">
+        <span style="color: #6B7488;">Universe</span>
+        <span style="font-family: 'Geist Mono', monospace; color: #E6EAF2; font-weight: 500;">1,142</span>
+        <span style="color: #454E62;">·</span>
+        <span style="color: #6B7488;">surveillance list</span>
+        <span style="font-family: 'Geist Mono', monospace; color: #C4B5FD;">03 Jul 2026</span>
+      </div>
+
+      <div style="flex: 1; min-width: 260px; display: flex; align-items: center; gap: 9px; padding: 6px 13px; border-radius: 8px; background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.18); font-size: 12px;">
+        <span style="width: 6px; height: 6px; border-radius: 50%; background: #818CF8;"></span>
+        <span style="color: #C7D2FE;">{{ regimeText }}</span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 8px; background: {{ lossBg }}; border: 1px solid {{ lossBorder }}; font-size: 12px;">
+        <span style="color: #6B7488;">Daily loss limit</span>
+        <span style="font-weight: 600; color: {{ lossFg }};">{{ lossLabel }}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== MAIN ===== -->
+  <main style="flex: 1; width: 100%; margin: 0 auto; padding: 28px;">
+
+    <!-- ============ SCANNER ============ -->
+    <sc-if value="{{ isScanner }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px;">
+          <h1 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em;">{{ scannerTitle }}</h1>
+          <span style="font-size: 13px; color: #6B7488;">{{ scannerSub }}</span>
+        </div>
+        <p style="margin: 0 0 22px; font-size: 13px; color: #6B7488; max-width: 720px;">{{ scannerNote }}</p>
+
+        <!-- Empty state -->
+        <sc-if value="{{ scannerEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top: 40px; padding: 64px 40px; text-align: center; background: rgba(255,255,255,0.025); border: 1px dashed rgba(255,255,255,0.12); border-radius: 18px;">
+            <div style="width: 52px; height: 52px; margin: 0 auto 18px; border-radius: 14px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', monospace; font-size: 22px; color: #6B7488;">—</div>
+            <div style="font-size: 17px; font-weight: 600; margin-bottom: 8px;">{{ emptyTitle }}</div>
+            <div style="font-size: 13px; color: #6B7488; max-width: 440px; margin: 0 auto; line-height: 1.6;">{{ emptyBody }}</div>
+          </div>
+        </sc-if>
+
+        <!-- Cards grid -->
+        <sc-if value="{{ hasCards }}" hint-placeholder-val="{{ true }}">
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px;">
+            <sc-for list="{{ cards }}" as="c" hint-placeholder-count="6">
+              <div style="background: linear-gradient(180deg, rgba(167,139,250,0.08), rgba(255,255,255,0.016)); border: 1px solid rgba(167,139,250,0.17); border-radius: 16px; backdrop-filter: blur(12px); overflow: hidden;">
+                <!-- Card head -->
+                <div style="padding: 16px 18px 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 9px;">
+                      <span style="font-family: 'Geist Mono', monospace; font-size: 17px; font-weight: 600; letter-spacing: -0.01em;">{{ c.symbol }}</span>
+                      <span style="font-size: 10.5px; color: #9AA3B5; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">{{ c.sector }}</span>
+                    </div>
+                    <div style="margin-top: 7px; display: flex; align-items: center; gap: 8px;">
+                      <sc-if value="{{ c.isLong }}" hint-placeholder-val="{{ true }}">
+                        <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: #34D399; padding: 3px 9px; border-radius: 6px; background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.28);">▲ LONG</span>
+                      </sc-if>
+                      <sc-if value="{{ c.isShort }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: #FB7185; padding: 3px 9px; border-radius: 6px; background: rgba(244,63,94,0.12); border: 1px solid rgba(244,63,94,0.28);">▼ SHORT</span>
+                      </sc-if>
+                      <span style="font-size: 11px; color: #6B7488;">rank #{{ c.rank }}</span>
+                    </div>
+                  </div>
+                  <!-- Sparkline -->
+                  <svg width="118" height="36" viewBox="0 0 118 36" style="flex-shrink: 0; margin-top: 2px;">
+                    <path d="{{ c.sparkPath }}" fill="none" stroke="{{ c.accent }}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+                  </svg>
+                </div>
+
+                <!-- Confidence -->
+                <div style="padding: 0 18px 14px;">
+                  <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="font-size: 12px; color: #9AA3B5;">{{ c.phrase }}</span>
+                    <span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: #E6EAF2; font-weight: 500;">{{ c.confNum }} <span style="color: #6B7488; font-size: 11px;">calibrated</span></span>
+                  </div>
+                  <div style="height: 5px; border-radius: 3px; background: rgba(255,255,255,0.06); overflow: hidden;">
+                    <div style="height: 100%; width: {{ c.confPct }}; background: {{ c.accent }}; border-radius: 3px;"></div>
+                  </div>
+                </div>
+
+                <!-- SHAP sentences -->
+                <div style="padding: 0 18px 14px; display: flex; flex-direction: column; gap: 7px;">
+                  <sc-for list="{{ c.shap3 }}" as="s" hint-placeholder-count="3">
+                    <div style="display: flex; gap: 8px; font-size: 12.5px; color: #C3CAD8; line-height: 1.45;">
+                      <span style="color: #A78BFA; flex-shrink: 0;">·</span>
+                      <span>{{ s }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <!-- Risk plan -->
+                <div style="margin: 0 18px 14px; padding: 12px 14px; border-radius: 11px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 8px;">
+                  <div><div style="font-size: 10.5px; color: #6B7488; margin-bottom: 3px;">Entry</div><div style="font-family: 'Geist Mono', monospace; font-size: 13.5px; color: #E6EAF2;">{{ c.entry }}</div></div>
+                  <div><div style="font-size: 10.5px; color: #6B7488; margin-bottom: 3px;">Stop</div><div style="font-family: 'Geist Mono', monospace; font-size: 13.5px; color: #FB7185;">{{ c.stop }}</div></div>
+                  <div><div style="font-size: 10.5px; color: #6B7488; margin-bottom: 3px;">Target</div><div style="font-family: 'Geist Mono', monospace; font-size: 13.5px; color: #34D399;">{{ c.target }}</div></div>
+                  <div><div style="font-size: 10.5px; color: #6B7488; margin-bottom: 3px;">Qty</div><div style="font-family: 'Geist Mono', monospace; font-size: 13.5px; color: #E6EAF2;">{{ c.qty }}</div></div>
+                  <div><div style="font-size: 10.5px; color: #6B7488; margin-bottom: 3px;">₹ at risk</div><div style="font-family: 'Geist Mono', monospace; font-size: 13.5px; color: #E6EAF2;">{{ c.atRisk }}</div></div>
+                  <div><div style="font-size: 10.5px; color: #6B7488; margin-bottom: 3px;">% capital</div><div style="font-family: 'Geist Mono', monospace; font-size: 13.5px; color: #E6EAF2;">{{ c.riskPct }}</div></div>
+                </div>
+
+                <!-- Holding statement + flags -->
+                <div style="padding: 0 18px 6px; display: flex; flex-direction: column; gap: 8px;">
+                  <div style="font-size: 11.5px; color: #8A93A6;">{{ c.holding }}</div>
+                  <sc-if value="{{ c.hasGap }}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; gap: 7px; align-items: center; font-size: 11.5px; color: #C7D2FE; padding: 6px 10px; border-radius: 8px; background: rgba(129,140,248,0.07); border: 1px solid rgba(129,140,248,0.16);">
+                      <span>⚠</span><span>{{ c.gapNote }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ c.hasFlags }}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                      <sc-for list="{{ c.flags }}" as="f" hint-placeholder-count="1">
+                        <span style="font-size: 10.5px; color: #C7D2FE; padding: 3px 9px; border-radius: 6px; background: rgba(129,140,248,0.1); border: 1px solid rgba(129,140,248,0.22);">{{ f }}</span>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+
+                <!-- Expand toggle -->
+                <button onClick="{{ c.onToggle }}" style="width: 100%; border: none; background: rgba(255,255,255,0.02); border-top: 1px solid rgba(255,255,255,0.06); cursor: pointer; padding: 11px; font-family: 'Geist', sans-serif; font-size: 12px; color: #8A93A6; margin-top: 8px;">{{ c.toggleLabel }}</button>
+
+                <!-- Expanded detail -->
+                <sc-if value="{{ c.expanded }}" hint-placeholder-val="{{ false }}">
+                  <div style="padding: 16px 18px 18px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05);">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6B7488; margin-bottom: 10px;">Top SHAP contributors</div>
+                    <div style="display: flex; flex-direction: column; gap: 9px;">
+                      <sc-for list="{{ c.fullShap }}" as="fs" hint-placeholder-count="6">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                          <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #8A93A6; width: 128px; flex-shrink: 0;">{{ fs.feat }}</span>
+                          <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; position: relative;">
+                            <div style="position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: rgba(255,255,255,0.14);"></div>
+                            <div style="position: absolute; top: 0; bottom: 0; {{ fs.barSide }}: 50%; width: {{ fs.barW }}; background: {{ fs.barColor }}; border-radius: 3px;"></div>
+                          </div>
+                          <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: {{ fs.barColor }}; width: 48px; text-align: right;">{{ fs.shap }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6B7488; margin: 16px 0 10px;">Feature values at emission</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;">
+                      <sc-for list="{{ c.featVals }}" as="fv" hint-placeholder-count="4">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                          <span style="color: #8A93A6; font-family: 'Geist Mono', monospace; font-size: 11px;">{{ fv.name }}</span>
+                          <span style="color: #E6EAF2; font-family: 'Geist Mono', monospace;">{{ fv.val }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+
+                    <div style="margin-top: 16px; padding: 11px 13px; border-radius: 10px; background: rgba(167,139,250,0.06); border: 1px solid rgba(167,139,250,0.16); font-size: 12px; color: #C4B5FD; line-height: 1.5;">
+                      <span style="color: #6B7488;">Regime context · </span>{{ c.regimeText }}
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ============ JOURNAL ============ -->
+    <sc-if value="{{ isJournal }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="margin: 0 0 4px; font-size: 22px; font-weight: 600; letter-spacing: -0.02em;">Signal journal &amp; outcomes</h1>
+        <p style="margin: 0 0 20px; font-size: 13px; color: #6B7488; max-width: 720px;">{{ journalNote }}</p>
+
+        <!-- Equity curve -->
+        <div style="background: linear-gradient(180deg, rgba(167,139,250,0.08), rgba(255,255,255,0.016)); border: 1px solid rgba(167,139,250,0.17); border-radius: 16px; padding: 20px 22px; margin-bottom: 18px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px;">
+            <div style="font-size: 14px; font-weight: 600;">Paper equity curve</div>
+            <div style="font-size: 12px; color: #6B7488;">cumulative R · costs modeled (0.05%/side)</div>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px;">
+            <span style="font-family: 'Geist Mono', monospace; font-size: 24px; font-weight: 600; color: {{ equityColor }};">{{ equityTotal }}</span>
+            <span style="font-size: 12px; color: #6B7488;">net over {{ equityCount }} paper trades · max drawdown {{ equityDD }}</span>
+          </div>
+          <svg width="100%" height="150" viewBox="0 0 900 150" preserveAspectRatio="none" style="display: block;">
+            <line x1="0" y1="{{ equityZeroY }}" x2="900" y2="{{ equityZeroY }}" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="4 4" />
+            <path d="{{ equityArea }}" fill="{{ equityFill }}" stroke="none" />
+            <path d="{{ equityPath }}" fill="none" stroke="{{ equityColor }}" stroke-width="2" stroke-linejoin="round" />
+          </svg>
+        </div>
+
+        <!-- Search -->
+        <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+          <input value="{{ query }}" onInput="{{ onQuery }}" placeholder="Search symbol…" style="flex: 1; max-width: 280px; padding: 9px 14px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #E6EAF2; font-family: 'Geist', sans-serif; font-size: 13px; outline: none;" />
+          <span style="font-size: 12px; color: #6B7488;">{{ journalCount }} signals</span>
+        </div>
+
+        <!-- Table -->
+        <div style="background: linear-gradient(180deg, rgba(167,139,250,0.05), rgba(255,255,255,0.012)); border: 1px solid rgba(167,139,250,0.12); border-radius: 16px; overflow: hidden;">
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; min-width: 860px;">
+              <thead>
+                <tr style="background: rgba(255,255,255,0.03);">
+                  <th style="text-align: left; padding: 12px 16px; font-size: 11px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Time</th>
+                  <th style="text-align: left; padding: 12px 12px; font-size: 11px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Symbol</th>
+                  <th style="text-align: left; padding: 12px 12px; font-size: 11px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Dir</th>
+                  <th style="text-align: right; padding: 12px 12px; font-size: 11px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Conf</th>
+                  <th style="text-align: right; padding: 12px 12px; font-size: 11px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">{{ h1 }}</th>
+                  <th style="text-align: right; padding: 12px 12px; font-size: 11px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">{{ h2 }}</th>
+                  <th style="text-align: right; padding: 12px 12px; font-size: 11px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">{{ h3 }}</th>
+                  <th style="text-align: right; padding: 12px 12px; font-size: 11px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">MAE</th>
+                  <th style="text-align: right; padding: 12px 12px; font-size: 11px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">MFE</th>
+                  <th style="text-align: right; padding: 12px 16px; font-size: 11px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ signals }}" as="r" hint-placeholder-count="10">
+                  <tr style="border-top: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 12px 16px; font-family: 'Geist Mono', monospace; font-size: 12px; color: #8A93A6;">{{ r.time }}</td>
+                    <td style="padding: 12px 12px; font-family: 'Geist Mono', monospace; font-size: 13px; font-weight: 500;">{{ r.symbol }}</td>
+                    <td style="padding: 12px 12px;"><span style="font-size: 11px; font-weight: 600; color: {{ r.dirColor }};">{{ r.dir }}</span></td>
+                    <td style="padding: 12px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12.5px;">{{ r.conf }}</td>
+                    <td style="padding: 12px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12.5px; color: {{ r.c1 }};">{{ r.o1 }}</td>
+                    <td style="padding: 12px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12.5px; color: {{ r.c2 }};">{{ r.o2 }}</td>
+                    <td style="padding: 12px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12.5px; color: {{ r.c3 }};">{{ r.o3 }}</td>
+                    <td style="padding: 12px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; color: #FB7185;">{{ r.mae }}</td>
+                    <td style="padding: 12px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; color: #34D399;">{{ r.mfe }}</td>
+                    <td style="padding: 12px 16px; text-align: right;"><span style="font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; background: {{ r.stBg }}; color: {{ r.stFg }}; border: 1px solid {{ r.stBorder }};">{{ r.status }}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <sc-if value="{{ journalEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 40px; text-align: center; font-size: 13px; color: #6B7488;">No signals match "{{ query }}".</div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ MODEL ============ -->
+    <sc-if value="{{ isModel }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="margin: 0 0 4px; font-size: 22px; font-weight: 600; letter-spacing: -0.02em;">Model track record</h1>
+        <p style="margin: 0 0 20px; font-size: 13px; color: #6B7488; max-width: 760px;">{{ modelNote }}</p>
+
+        <div style="display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start;">
+          <!-- Active model card + calibration -->
+          <div style="display: flex; flex-direction: column; gap: 18px;">
+            <div style="background: linear-gradient(180deg, rgba(167,139,250,0.08), rgba(255,255,255,0.016)); border: 1px solid rgba(167,139,250,0.17); border-radius: 16px; padding: 18px 20px;">
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6B7488; margin-bottom: 12px;">Active model</div>
+              <div style="font-family: 'Geist Mono', monospace; font-size: 15px; font-weight: 600; margin-bottom: 4px;">{{ mdl.id }}</div>
+              <div style="display: inline-block; font-size: 10.5px; font-weight: 600; color: #34D399; padding: 2px 8px; border-radius: 6px; background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.28); margin-bottom: 14px;">● ACTIVE</div>
+              <div style="display: flex; flex-direction: column; gap: 9px;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color: #6B7488;">Trained</span><span style="font-family: 'Geist Mono', monospace;">{{ mdl.trained }}</span></div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color: #6B7488;">Train window</span><span style="font-family: 'Geist Mono', monospace;">{{ mdl.window }}</span></div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color: #6B7488;">Features</span><span style="font-family: 'Geist Mono', monospace;">{{ mdl.nFeat }}</span></div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color: #6B7488;">CV folds</span><span style="font-family: 'Geist Mono', monospace;">{{ mdl.nFolds }}</span></div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px;"><span style="color: #6B7488;">Calibration</span><span style="font-family: 'Geist Mono', monospace;">isotonic</span></div>
+              </div>
+            </div>
+
+            <!-- Calibration curve -->
+            <div style="background: linear-gradient(180deg, rgba(167,139,250,0.08), rgba(255,255,255,0.016)); border: 1px solid rgba(167,139,250,0.17); border-radius: 16px; padding: 18px 20px;">
+              <div style="font-size: 14px; font-weight: 600; margin-bottom: 2px;">Calibration curve</div>
+              <div style="font-size: 11.5px; color: #6B7488; margin-bottom: 14px;">Predicted confidence vs realized outcome. Distance from the diagonal is where over-confidence shows.</div>
+              <svg width="100%" height="230" viewBox="0 0 260 230" style="display: block;">
+                <rect x="34" y="8" width="212" height="188" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.07)" stroke-width="1" />
+                <line x1="34" y1="196" x2="246" y2="8" stroke="rgba(255,255,255,0.18)" stroke-width="1" stroke-dasharray="4 3" />
+                <path d="{{ calibPath }}" fill="none" stroke="#A78BFA" stroke-width="2" stroke-linejoin="round" />
+                <sc-for list="{{ calibPts }}" as="p" hint-placeholder-count="6">
+                  <circle cx="{{ p.x }}" cy="{{ p.y }}" r="3" fill="#A78BFA" />
+                </sc-for>
+                <text x="34" y="216" fill="#6B7488" font-size="9" font-family="monospace">{{ calibMin }}</text>
+                <text x="222" y="216" fill="#6B7488" font-size="9" font-family="monospace">{{ calibMax }}</text>
+                <text x="6" y="14" fill="#6B7488" font-size="9" font-family="monospace">real</text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Right column: red flags, folds, IC -->
+          <div style="display: flex; flex-direction: column; gap: 18px;">
+            <!-- Red flags -->
+            <div>
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6B7488; margin-bottom: 10px;">Red flags &amp; honesty checks</div>
+              <sc-if value="{{ mdl.hasFlags }}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <sc-for list="{{ mdl.flags }}" as="fl" hint-placeholder-count="2">
+                    <div style="display: flex; gap: 12px; padding: 13px 16px; border-radius: 12px; background: {{ fl.bg }}; border: 1px solid {{ fl.border }};">
+                      <span style="font-size: 16px; line-height: 1;">⚠</span>
+                      <div>
+                        <div style="font-size: 13px; font-weight: 600; color: {{ fl.fg }};">{{ fl.title }}</div>
+                        <div style="font-size: 12px; color: #9AA3B5; margin-top: 3px; line-height: 1.5;">{{ fl.body }}</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ mdl.noFlags }}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; gap: 12px; padding: 13px 16px; border-radius: 12px; background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.18);">
+                  <span style="font-size: 15px; color: #34D399;">✓</span>
+                  <div style="font-size: 12.5px; color: #9AA3B5; line-height: 1.5;">No red flags raised across folds. Averages are still shown with their spread below — never alone.</div>
+                </div>
+              </sc-if>
+            </div>
+
+            <!-- CV folds table -->
+            <div style="background: linear-gradient(180deg, rgba(167,139,250,0.05), rgba(255,255,255,0.012)); border: 1px solid rgba(167,139,250,0.12); border-radius: 16px; overflow: hidden;">
+              <div style="padding: 15px 18px 12px; display: flex; align-items: baseline; justify-content: space-between;">
+                <div style="font-size: 14px; font-weight: 600;">Purged walk-forward CV — all folds</div>
+                <div style="font-size: 11.5px; color: #6B7488;">precision {{ mdl.precMean }} ± {{ mdl.precStd }}</div>
+              </div>
+              <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; min-width: 560px;">
+                  <thead>
+                    <tr style="background: rgba(255,255,255,0.03);">
+                      <th style="text-align: left; padding: 10px 18px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Fold</th>
+                      <th style="text-align: left; padding: 10px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Test window</th>
+                      <th style="text-align: right; padding: 10px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Signals</th>
+                      <th style="text-align: right; padding: 10px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Precision</th>
+                      <th style="text-align: right; padding: 10px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Calib err</th>
+                      <th style="text-align: right; padding: 10px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Avg R</th>
+                      <th style="text-align: right; padding: 10px 18px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Max DD</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ mdl.folds }}" as="f" hint-placeholder-count="6">
+                      <tr style="border-top: 1px solid rgba(255,255,255,0.05); background: {{ f.rowBg }};">
+                        <td style="padding: 11px 18px; font-family: 'Geist Mono', monospace; font-size: 12.5px; font-weight: 500;">{{ f.fold }}</td>
+                        <td style="padding: 11px 12px; font-family: 'Geist Mono', monospace; font-size: 11.5px; color: #8A93A6;">{{ f.window }}</td>
+                        <td style="padding: 11px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; color: #C3CAD8;">{{ f.n }}</td>
+                        <td style="padding: 11px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12.5px; font-weight: 500; color: {{ f.precColor }};">{{ f.prec }}</td>
+                        <td style="padding: 11px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; color: #C3CAD8;">{{ f.calib }}</td>
+                        <td style="padding: 11px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; color: #C3CAD8;">{{ f.r }}</td>
+                        <td style="padding: 11px 18px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; color: #FB7185;">{{ f.dd }}</td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Feature IC + retrain -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+              <div style="background: linear-gradient(180deg, rgba(167,139,250,0.05), rgba(255,255,255,0.012)); border: 1px solid rgba(167,139,250,0.12); border-radius: 16px; padding: 16px 18px;">
+                <div style="font-size: 13.5px; font-weight: 600; margin-bottom: 12px;">Feature IC</div>
+                <div style="display: flex; flex-direction: column; gap: 9px;">
+                  <sc-for list="{{ mdl.ic }}" as="ic" hint-placeholder-count="6">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #8A93A6; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ ic.name }}</span>
+                      <div style="width: 70px; height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px;"><div style="height: 100%; width: {{ ic.w }}; background: #A78BFA; border-radius: 3px;"></div></div>
+                      <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #C3CAD8; width: 38px; text-align: right;">{{ ic.val }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="background: linear-gradient(180deg, rgba(167,139,250,0.05), rgba(255,255,255,0.012)); border: 1px solid rgba(167,139,250,0.12); border-radius: 16px; padding: 16px 18px;">
+                <div style="font-size: 13.5px; font-weight: 600; margin-bottom: 12px;">Retrain history</div>
+                <div style="display: flex; flex-direction: column; gap: 11px;">
+                  <sc-for list="{{ mdl.retrains }}" as="rt" hint-placeholder-count="4">
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                      <span style="width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; background: {{ rt.dot }};"></span>
+                      <div>
+                        <div style="font-family: 'Geist Mono', monospace; font-size: 11.5px; color: #C3CAD8;">{{ rt.id }}</div>
+                        <div style="font-size: 11px; color: #6B7488; margin-top: 1px;">{{ rt.note }}</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ UNIVERSE ============ -->
+    <sc-if value="{{ isUniverse }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="margin: 0 0 4px; font-size: 22px; font-weight: 600; letter-spacing: -0.02em;">Watched universe</h1>
+        <p style="margin: 0 0 20px; font-size: 13px; color: #6B7488; max-width: 720px;">{{ universeNote }}</p>
+
+        <!-- Staleness banner -->
+        <div style="display: flex; gap: 11px; align-items: center; padding: 12px 16px; border-radius: 12px; background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.18); margin-bottom: 18px;">
+          <span style="color: #34D399;">✓</span>
+          <span style="font-size: 12.5px; color: #9AA3B5;">Surveillance list current — NSE consolidated file dated <span style="font-family: 'Geist Mono', monospace; color: #C4B5FD;">03 Jul 2026</span>. GSM (all stages) and ASM (ST &amp; LT, stage ≥ 1) excluded by default.</span>
+        </div>
+
+        <!-- Count tiles -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px;">
+          <div style="background: linear-gradient(180deg, rgba(167,139,250,0.08), rgba(255,255,255,0.016)); border: 1px solid rgba(167,139,250,0.17); border-radius: 14px; padding: 18px 20px;">
+            <div style="font-size: 11.5px; color: #6B7488; margin-bottom: 8px;">-EQ series scanned</div>
+            <div style="font-family: 'Geist Mono', monospace; font-size: 28px; font-weight: 600;">1,628</div>
+          </div>
+          <div style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: 14px; padding: 18px 20px;">
+            <div style="font-size: 11.5px; color: #6B7488; margin-bottom: 8px;">Included</div>
+            <div style="font-family: 'Geist Mono', monospace; font-size: 28px; font-weight: 600; color: #34D399;">1,142</div>
+          </div>
+          <div style="background: rgba(244,63,94,0.05); border: 1px solid rgba(244,63,94,0.18); border-radius: 14px; padding: 18px 20px;">
+            <div style="font-size: 11.5px; color: #6B7488; margin-bottom: 8px;">Excluded</div>
+            <div style="font-family: 'Geist Mono', monospace; font-size: 28px; font-weight: 600; color: #FB7185;">486</div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start;">
+          <!-- Exclusion breakdown -->
+          <div style="background: linear-gradient(180deg, rgba(167,139,250,0.05), rgba(255,255,255,0.012)); border: 1px solid rgba(167,139,250,0.12); border-radius: 16px; padding: 18px 20px;">
+            <div style="font-size: 13.5px; font-weight: 600; margin-bottom: 14px;">Why stocks are excluded</div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <sc-for list="{{ exclusions }}" as="e" hint-placeholder-count="6">
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                    <span style="color: #C3CAD8;">{{ e.label }}</span>
+                    <span style="font-family: 'Geist Mono', monospace; color: #8A93A6;">{{ e.n }}</span>
+                  </div>
+                  <div style="height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px;"><div style="height: 100%; width: {{ e.w }}; background: {{ e.color }}; border-radius: 3px;"></div></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- Symbol table -->
+          <div style="background: linear-gradient(180deg, rgba(167,139,250,0.05), rgba(255,255,255,0.012)); border: 1px solid rgba(167,139,250,0.12); border-radius: 16px; overflow: hidden;">
+            <div style="padding: 15px 18px 12px; font-size: 14px; font-weight: 600;">Per-symbol status</div>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; min-width: 620px;">
+                <thead>
+                  <tr style="background: rgba(255,255,255,0.03);">
+                    <th style="text-align: left; padding: 10px 18px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Symbol</th>
+                    <th style="text-align: left; padding: 10px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Sector</th>
+                    <th style="text-align: right; padding: 10px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Turnover ₹cr</th>
+                    <th style="text-align: right; padding: 10px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">ATR %</th>
+                    <th style="text-align: right; padding: 10px 18px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ universeRows }}" as="u" hint-placeholder-count="10">
+                    <tr style="border-top: 1px solid rgba(255,255,255,0.05);">
+                      <td style="padding: 11px 18px;"><span style="font-family: 'Geist Mono', monospace; font-size: 12.5px; font-weight: 500;">{{ u.symbol }}</span> <sc-if value="{{ u.core }}" hint-placeholder-val="{{ false }}"><span style="font-size: 9px; color: #A78BFA; padding: 1px 5px; border-radius: 4px; background: rgba(167,139,250,0.12); margin-left: 4px;">core</span></sc-if></td>
+                      <td style="padding: 11px 12px; font-size: 12px; color: #9AA3B5;">{{ u.sector }}</td>
+                      <td style="padding: 11px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; color: #C3CAD8;">{{ u.turnover }}</td>
+                      <td style="padding: 11px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; color: #C3CAD8;">{{ u.atr }}</td>
+                      <td style="padding: 11px 18px; text-align: right;"><span style="font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; background: {{ u.bg }}; color: {{ u.fg }}; border: 1px solid {{ u.border }};">{{ u.status }}</span></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ SEARCH ============ -->
+    <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="margin: 0 0 4px; font-size: 22px; font-weight: 600; letter-spacing: -0.02em;">Find NSE stocks</h1>
+        <p style="margin: 0 0 20px; font-size: 13px; color: #6B7488; max-width: 720px;">{{ searchNote }}</p>
+
+        <div style="margin-bottom: 14px; display: flex; align-items: center; gap: 12px;">
+          <div style="flex: 1; max-width: 420px; display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+            <span style="color: #6B7488; font-size: 14px;">⌕</span>
+            <input value="{{ searchQuery }}" onInput="{{ onSearchQuery }}" placeholder="Search symbol or sector — e.g. RELIANCE, Pharma" style="flex: 1; border: none; background: none; color: #E6EAF2; font-family: 'Geist', sans-serif; font-size: 13.5px; outline: none;" />
+          </div>
+          <span style="font-size: 12px; color: #6B7488;">{{ searchCount }} matches</span>
+        </div>
+
+        <div style="background: linear-gradient(180deg, rgba(167,139,250,0.05), rgba(255,255,255,0.012)); border: 1px solid rgba(167,139,250,0.12); border-radius: 16px; overflow: hidden;">
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; min-width: 720px;">
+              <thead>
+                <tr style="background: rgba(255,255,255,0.03);">
+                  <th style="text-align: left; padding: 11px 18px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Symbol</th>
+                  <th style="text-align: left; padding: 11px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Sector</th>
+                  <th style="text-align: left; padding: 11px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Series</th>
+                  <th style="text-align: right; padding: 11px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Turnover ₹cr</th>
+                  <th style="text-align: right; padding: 11px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">ATR %</th>
+                  <th style="text-align: left; padding: 11px 12px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Live setup</th>
+                  <th style="text-align: right; padding: 11px 18px; font-size: 10.5px; font-weight: 500; color: #6B7488; text-transform: uppercase; letter-spacing: 0.05em;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ searchResults }}" as="s" hint-placeholder-count="12">
+                  <tr style="border-top: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 12px 18px; font-family: 'Geist Mono', monospace; font-size: 13px; font-weight: 500;">{{ s.symbol }}</td>
+                    <td style="padding: 12px 12px; font-size: 12px; color: #9AA3B5;">{{ s.sector }}</td>
+                    <td style="padding: 12px 12px; font-family: 'Geist Mono', monospace; font-size: 11.5px; color: #8A93A6;">{{ s.series }}</td>
+                    <td style="padding: 12px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; color: #C3CAD8;">{{ s.turnover }}</td>
+                    <td style="padding: 12px 12px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; color: #C3CAD8;">{{ s.atr }}</td>
+                    <td style="padding: 12px 12px;">
+                      <sc-if value="{{ s.hasSetup }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size: 11px; color: #C4B5FD; font-family: 'Geist Mono', monospace;">{{ s.setup }}</span>
+                      </sc-if>
+                      <sc-if value="{{ s.noSetup }}" hint-placeholder-val="{{ true }}">
+                        <span style="font-size: 11px; color: #4A5468;">—</span>
+                      </sc-if>
+                    </td>
+                    <td style="padding: 12px 18px; text-align: right;"><span style="font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; background: {{ s.bg }}; color: {{ s.fg }}; border: 1px solid {{ s.border }};">{{ s.statusLabel }}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <sc-if value="{{ searchEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 44px; text-align: center; font-size: 13px; color: #6B7488;">No NSE stock matches "{{ searchQuery }}". Try a symbol or sector name.</div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+  </main>
+
+  <!-- ===== PERMANENT FOOTER DISCLOSURE ===== -->
+  <footer style="position: sticky; bottom: 0; z-index: 30; backdrop-filter: blur(14px); background: rgba(10,14,23,0.9); border-top: 1px solid rgba(255,255,255,0.08);">
+    <div style="max-width: 1360px; margin: 0 auto; padding: 11px 28px; display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: #6B7488; padding: 3px 8px; border-radius: 5px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;">DISCLOSURE</span>
+      <p style="margin: 0; font-size: 11.5px; line-height: 1.5; color: #8A93A6;">This is an independent-developer analytics tool, not an institutional trading system. It estimates probabilities; it does not predict the future. Most retail intraday traders lose money (SEBI studies). Not investment advice.</p>
+    </div>
+  </footer>
+
+  </div>
+ </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360,&quot;height&quot;:900},&quot;lossLimitHalted&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;State preview&quot;,&quot;label&quot;:&quot;Daily loss limit hit (halts intraday, shows empty state)&quot;}}">
+class Component extends DCLogic {
+  state = { mode: 'INTRADAY', page: 'scanner', query: '', searchQuery: '', expanded: {} };
+
+  searchStocks = [
+    { symbol:'RELIANCE', sector:'Energy', series:'EQ', turnover:'842', atr:'0.83', status:'included', setup:'Intraday LONG · 0.68' },
+    { symbol:'TCS', sector:'IT', series:'EQ', turnover:'488', atr:'0.79', status:'included', setup:'' },
+    { symbol:'HDFCBANK', sector:'Financials', series:'EQ', turnover:'1,204', atr:'0.71', status:'included', setup:'Intraday SHORT · 0.61' },
+    { symbol:'INFY', sector:'IT', series:'EQ', turnover:'596', atr:'0.94', status:'included', setup:'Intraday LONG · 0.66' },
+    { symbol:'ICICIBANK', sector:'Financials', series:'EQ', turnover:'701', atr:'0.79', status:'included', setup:'Intraday LONG · 0.62' },
+    { symbol:'SBIN', sector:'Financials', series:'EQ', turnover:'523', atr:'1.04', status:'included', setup:'' },
+    { symbol:'TATASTEEL', sector:'Metals', series:'EQ', turnover:'318', atr:'1.12', status:'included', setup:'Intraday LONG · 0.64' },
+    { symbol:'TATAMOTORS', sector:'Auto', series:'EQ', turnover:'402', atr:'1.31', status:'included', setup:'' },
+    { symbol:'MARUTI', sector:'Auto', series:'EQ', turnover:'196', atr:'0.88', status:'included', setup:'Intraday SHORT · 0.60' },
+    { symbol:'SUNPHARMA', sector:'Pharma', series:'EQ', turnover:'241', atr:'0.86', status:'included', setup:'Intraday LONG · 0.63' },
+    { symbol:'TITAN', sector:'Consumer', series:'EQ', turnover:'274', atr:'1.90', status:'included', setup:'Swing LONG · 0.71' },
+    { symbol:'LT', sector:'Infra', series:'EQ', turnover:'356', atr:'1.70', status:'included', setup:'Swing LONG · 0.68' },
+    { symbol:'BAJFINANCE', sector:'Financials', series:'EQ', turnover:'512', atr:'2.20', status:'included', setup:'Swing LONG · 0.66' },
+    { symbol:'ASIANPAINT', sector:'Materials', series:'EQ', turnover:'188', atr:'1.60', status:'included', setup:'Swing LONG · 0.63' },
+    { symbol:'DIVISLAB', sector:'Pharma', series:'EQ', turnover:'134', atr:'1.80', status:'included', setup:'Swing LONG · 0.61' },
+    { symbol:'HCLTECH', sector:'IT', series:'EQ', turnover:'221', atr:'1.05', status:'included', setup:'' },
+    { symbol:'WIPRO', sector:'IT', series:'EQ', turnover:'163', atr:'1.12', status:'included', setup:'' },
+    { symbol:'ONGC', sector:'Energy', series:'EQ', turnover:'149', atr:'1.24', status:'included', setup:'' },
+    { symbol:'AXISBANK', sector:'Financials', series:'EQ', turnover:'398', atr:'0.98', status:'included', setup:'' },
+    { symbol:'ULTRACEMCO', sector:'Materials', series:'EQ', turnover:'112', atr:'1.44', status:'included', setup:'' },
+    { symbol:'NESTLEIND', sector:'Consumer', series:'EQ', turnover:'96', atr:'0.92', status:'included', setup:'' },
+    { symbol:'YESBANK', sector:'Financials', series:'EQ', turnover:'44', atr:'2.40', status:'ASM_LT2', setup:'' },
+    { symbol:'IDEA', sector:'Telecom', series:'EQ', turnover:'61', atr:'3.60', status:'ASM_ST1', setup:'' },
+    { symbol:'SUZLON', sector:'Industrials', series:'EQ', turnover:'—', atr:'—', status:'PRICE_LT_20', setup:'' },
+    { symbol:'RCOM', sector:'Telecom', series:'EQ', turnover:'3.1', atr:'—', status:'GSM_2', setup:'' },
+    { symbol:'JISLJALEQS', sector:'Industrials', series:'BE', turnover:'—', atr:'—', status:'T2T', setup:'' },
+    { symbol:'SMALLTEX', sector:'Textiles', series:'EQ', turnover:'2.4', atr:'1.50', status:'LOW_TURNOVER', setup:'' },
+    { symbol:'NEWLISTCO', sector:'Materials', series:'EQ', turnover:'88', atr:'2.10', status:'LISTED_LT_60', setup:'' }
+  ];
+
+  // ---------- helpers ----------
+  linePath(vals, w, h, pad) {
+    const min = Math.min(...vals), max = Math.max(...vals), rng = (max - min) || 1, n = vals.length;
+    return vals.map((v, i) => {
+      const x = pad + (i / (n - 1)) * (w - 2 * pad);
+      const y = pad + (1 - (v - min) / rng) * (h - 2 * pad);
+      return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }).join(' ');
+  }
+  confPhrase(c) { return Math.round(c * 10) + ' of 10 similar setups worked historically'; }
+
+  // ---------- static data ----------
+  intradayCards = [
+    { symbol: 'RELIANCE', sector: 'Energy', direction: 1, confidence: 0.68, spark: [12,13,12.6,14,13.7,15,15.4,16.2,16,17.1],
+      entry: '2,945.5', stop: '2,921.0', target: '2,994.5', qty: '40', atRisk: '9,800', riskPct: '1.0%',
+      holding: 'Intraday — auto square-off by 15:15 IST.', flags: [],
+      fullShap: [
+        { s: 'Price is holding well above VWAP (strongest factor).', feat: 'vwap_dist_atr', val: '+1.82', shap: '+0.24' },
+        { s: 'Volume surged 2.3σ over the 20-bar average.', feat: 'vol_zscore', val: '2.31', shap: '+0.17' },
+        { s: 'Trading in the top of the opening range.', feat: 'orb_position', val: '0.88', shap: '+0.12' },
+        { s: '15-minute trend agrees with the setup.', feat: 'trend_agree_15m', val: '1', shap: '+0.08' },
+        { s: 'Relative strength vs NIFTY is positive.', feat: 'rs_nifty', val: '+0.6%', shap: '+0.05' },
+        { s: 'RSI is elevated but not yet extreme.', feat: 'rsi_14', val: '61.4', shap: '-0.03' } ],
+      featVals: [{name:'atr_pct',val:'0.83%'},{name:'macd_hist',val:'+2.1'},{name:'gap_pct',val:'+0.4%'},{name:'vol_zscore',val:'2.31'}],
+      regimeText: 'India VIX 13.8 (falling) · NIFTY above 50 & 200-DMA · breadth +312/−178' },
+    { symbol: 'TATASTEEL', sector: 'Metals', direction: 1, confidence: 0.64, spark: [8,8.4,8.1,9,9.3,9,9.6,10.1,10,10.4],
+      entry: '178.20', stop: '175.10', target: '184.40', qty: '310', atRisk: '9,610', riskPct: '1.0%',
+      holding: 'Intraday — auto square-off by 15:15 IST.', flags: [],
+      fullShap: [
+        { s: 'Cumulative volume is running ahead of its same-time average.', feat: 'cum_vol_ratio', val: '1.44', shap: '+0.19' },
+        { s: 'Price reclaimed VWAP with momentum.', feat: 'vwap_dist_atr', val: '+0.91', shap: '+0.15' },
+        { s: 'MACD histogram slope turned positive.', feat: 'macd_slope', val: '+0.4', shap: '+0.10' },
+        { s: 'Sector (Metals) showing relative strength.', feat: 'rs_sector', val: '+0.9%', shap: '+0.07' },
+        { s: 'RSI recovering from oversold.', feat: 'rsi_14', val: '54.0', shap: '+0.04' },
+        { s: 'Gap into the session was modest.', feat: 'gap_pct', val: '+0.2%', shap: '-0.02' } ],
+      featVals: [{name:'atr_pct',val:'1.12%'},{name:'orb_position',val:'0.71'},{name:'ofi_top',val:'+0.18'},{name:'vol_zscore',val:'1.7'}],
+      regimeText: 'India VIX 13.8 (falling) · NIFTY above 50 & 200-DMA · breadth +312/−178' },
+    { symbol: 'HDFCBANK', sector: 'Financials', direction: -1, confidence: 0.61, spark: [16,15.6,15.8,15,14.6,14.8,14,13.6,13.8,13.1],
+      entry: '1,642.0', stop: '1,659.5', target: '1,607.0', qty: '55', atRisk: '9,625', riskPct: '1.0%',
+      holding: 'Intraday — auto square-off by 15:15 IST.', flags: ['Sector: 2 open Financials signals'],
+      fullShap: [
+        { s: 'Price is trading below VWAP and fading.', feat: 'vwap_dist_atr', val: '-1.24', shap: '+0.21' },
+        { s: 'Lower-range position within the opening range.', feat: 'orb_position', val: '0.14', shap: '+0.14' },
+        { s: 'MACD histogram slope is negative.', feat: 'macd_slope', val: '-0.5', shap: '+0.09' },
+        { s: 'Relative weakness vs NIFTY.', feat: 'rs_nifty', val: '-0.7%', shap: '+0.06' },
+        { s: 'Volume expanding on the down move.', feat: 'vol_zscore', val: '1.9', shap: '+0.05' },
+        { s: 'RSI approaching oversold — some rebound risk.', feat: 'rsi_14', val: '38.2', shap: '-0.04' } ],
+      featVals: [{name:'atr_pct',val:'0.71%'},{name:'macd_hist',val:'-1.6'},{name:'gap_pct',val:'-0.3%'},{name:'ofi_top',val:'-0.22'}],
+      regimeText: 'India VIX 13.8 (falling) · NIFTY above 50 & 200-DMA · breadth +312/−178' },
+    { symbol: 'INFY', sector: 'IT', direction: 1, confidence: 0.66, spark: [11,11.2,11.1,11.6,12,11.8,12.4,12.7,12.6,13.2],
+      entry: '1,588.0', stop: '1,571.0', target: '1,622.0', qty: '58', atRisk: '9,860', riskPct: '1.0%',
+      holding: 'Intraday — auto square-off by 15:15 IST.', flags: [],
+      fullShap: [
+        { s: 'Price is holding well above VWAP.', feat: 'vwap_dist_atr', val: '+1.55', shap: '+0.22' },
+        { s: 'Opening-range breakout confirmed.', feat: 'orb_position', val: '0.92', shap: '+0.14' },
+        { s: 'Volume above the 20-bar average.', feat: 'vol_zscore', val: '1.6', shap: '+0.09' },
+        { s: 'IT sector leading the tape today.', feat: 'rs_sector', val: '+1.1%', shap: '+0.07' },
+        { s: '15-minute trend agrees.', feat: 'trend_agree_15m', val: '1', shap: '+0.05' },
+        { s: 'Order-flow imbalance mildly positive.', feat: 'ofi_top', val: '+0.12', shap: '+0.03' } ],
+      featVals: [{name:'atr_pct',val:'0.94%'},{name:'macd_hist',val:'+1.9'},{name:'rsi_14',val:'63.1'},{name:'gap_pct',val:'+0.6%'}],
+      regimeText: 'India VIX 13.8 (falling) · NIFTY above 50 & 200-DMA · breadth +312/−178' },
+    { symbol: 'ICICIBANK', sector: 'Financials', direction: 1, confidence: 0.62, spark: [9,9.2,9.1,9.5,9.4,9.8,9.7,10,10.2,10.3],
+      entry: '1,204.0', stop: '1,190.0', target: '1,232.0', qty: '70', atRisk: '9,800', riskPct: '1.0%',
+      holding: 'Intraday — auto square-off by 15:15 IST.', flags: ['Sector: 2 open Financials signals'],
+      fullShap: [
+        { s: 'Price steady above VWAP.', feat: 'vwap_dist_atr', val: '+0.88', shap: '+0.18' },
+        { s: 'Cumulative volume ahead of average.', feat: 'cum_vol_ratio', val: '1.28', shap: '+0.12' },
+        { s: 'MACD histogram positive and rising.', feat: 'macd_slope', val: '+0.3', shap: '+0.09' },
+        { s: 'Relative strength vs NIFTY positive.', feat: 'rs_nifty', val: '+0.4%', shap: '+0.06' },
+        { s: 'RSI constructive.', feat: 'rsi_14', val: '58.0', shap: '+0.04' },
+        { s: 'Opening range mid-upper.', feat: 'orb_position', val: '0.66', shap: '+0.02' } ],
+      featVals: [{name:'atr_pct',val:'0.79%'},{name:'macd_hist',val:'+1.3'},{name:'ofi_top',val:'+0.09'},{name:'gap_pct',val:'+0.1%'}],
+      regimeText: 'India VIX 13.8 (falling) · NIFTY above 50 & 200-DMA · breadth +312/−178' },
+    { symbol: 'MARUTI', sector: 'Auto', direction: -1, confidence: 0.60, spark: [14,13.7,13.9,13.4,13,13.2,12.8,12.6,12.7,12.2],
+      entry: '12,410', stop: '12,560', target: '12,110', qty: '6', atRisk: '900', riskPct: '1.0%',
+      holding: 'Intraday — auto square-off by 15:15 IST.', flags: [],
+      fullShap: [
+        { s: 'Price fading below VWAP.', feat: 'vwap_dist_atr', val: '-0.95', shap: '+0.17' },
+        { s: 'Lower opening-range position.', feat: 'orb_position', val: '0.22', shap: '+0.11' },
+        { s: 'Relative weakness vs NIFTY.', feat: 'rs_nifty', val: '-0.5%', shap: '+0.08' },
+        { s: 'MACD slope negative.', feat: 'macd_slope', val: '-0.3', shap: '+0.05' },
+        { s: 'Volume moderately elevated.', feat: 'vol_zscore', val: '1.3', shap: '+0.03' },
+        { s: 'RSI mid-range.', feat: 'rsi_14', val: '44.0', shap: '-0.02' } ],
+      featVals: [{name:'atr_pct',val:'0.88%'},{name:'macd_hist',val:'-0.9'},{name:'gap_pct',val:'-0.2%'},{name:'ofi_top',val:'-0.11'}],
+      regimeText: 'India VIX 13.8 (falling) · NIFTY above 50 & 200-DMA · breadth +312/−178' },
+    { symbol: 'SUNPHARMA', sector: 'Pharma', direction: 1, confidence: 0.63, spark: [7,7.1,7.3,7.2,7.6,7.8,7.7,8.1,8,8.3],
+      entry: '1,712.0', stop: '1,694.0', target: '1,748.0', qty: '54', atRisk: '9,720', riskPct: '1.0%',
+      holding: 'Intraday — auto square-off by 15:15 IST.', flags: [],
+      fullShap: [
+        { s: 'Price holding above VWAP after a base.', feat: 'vwap_dist_atr', val: '+1.02', shap: '+0.19' },
+        { s: 'Volume expansion into the move.', feat: 'vol_zscore', val: '1.8', shap: '+0.13' },
+        { s: 'Pharma sector relatively strong.', feat: 'rs_sector', val: '+0.8%', shap: '+0.08' },
+        { s: 'Opening-range upper half.', feat: 'orb_position', val: '0.74', shap: '+0.05' },
+        { s: 'MACD histogram positive.', feat: 'macd_hist', val: '+1.2', shap: '+0.04' },
+        { s: 'RSI healthy.', feat: 'rsi_14', val: '59.0', shap: '+0.02' } ],
+      featVals: [{name:'atr_pct',val:'0.86%'},{name:'macd_slope',val:'+0.2'},{name:'gap_pct',val:'+0.3%'},{name:'ofi_top',val:'+0.07'}],
+      regimeText: 'India VIX 13.8 (falling) · NIFTY above 50 & 200-DMA · breadth +312/−178' }
+  ];
+
+  swingCards = [
+    { symbol: 'TITAN', sector: 'Consumer', direction: 1, confidence: 0.71, spark: [30,31,30.5,32,33,32.5,34,35,34.5,36],
+      entry: '3,420', stop: '3,308', target: '3,644', qty: '44', atRisk: '4,928', riskPct: '1.5%',
+      holding: 'Swing — planned hold 5–10 sessions (delivery / CNC).',
+      gapNote: 'Holds overnight — gaps can jump the stop. Earnings within 4 sessions.',
+      flags: ['Earnings in 4 sessions'],
+      fullShap: [
+        { s: '20/50/200-DMA are aligned bullishly.', feat: 'dma_alignment', val: '1.0', shap: '+0.26' },
+        { s: 'Within 3% of its 52-week high.', feat: 'dist_52w_high', val: '-2.6%', shap: '+0.18' },
+        { s: 'Leading its sector on relative strength.', feat: 'rs_sector', val: '+4.1%', shap: '+0.12' },
+        { s: 'Weekly RSI confirms the uptrend.', feat: 'weekly_rsi', val: '64.0', shap: '+0.08' },
+        { s: 'Realized volatility is compressing.', feat: 'gk_vol_trend', val: '-0.3', shap: '+0.05' },
+        { s: 'Daily RSI slightly extended.', feat: 'rsi_14', val: '68.0', shap: '-0.04' } ],
+      featVals: [{name:'atr14_pct',val:'1.9%'},{name:'dist_50dma',val:'+6.2%'},{name:'rs_nifty_20d',val:'+3.4%'},{name:'gap_pct',val:'+0.2%'}],
+      regimeText: 'India VIX 13.8 (falling) · NIFTY above 50 & 200-DMA · breadth positive' },
+    { symbol: 'LT', sector: 'Infra', direction: 1, confidence: 0.68, spark: [20,20.5,21,20.8,21.6,22,21.8,22.5,23,23.4],
+      entry: '3,690', stop: '3,560', target: '3,950', qty: '38', atRisk: '4,940', riskPct: '1.5%',
+      holding: 'Swing — planned hold 5–10 sessions (delivery / CNC).',
+      gapNote: 'Holds overnight — gaps can jump the stop.',
+      flags: [],
+      fullShap: [
+        { s: 'Clean DMA alignment on the daily.', feat: 'dma_alignment', val: '1.0', shap: '+0.23' },
+        { s: 'Breaking to new multi-week highs.', feat: 'dist_52w_high', val: '-1.1%', shap: '+0.17' },
+        { s: 'Infra sector strong vs market.', feat: 'rs_sector', val: '+3.2%', shap: '+0.11' },
+        { s: 'Weekly RSI trending up.', feat: 'weekly_rsi', val: '61.0', shap: '+0.07' },
+        { s: 'Volatility trend stable.', feat: 'gk_vol_trend', val: '0.0', shap: '+0.03' },
+        { s: 'Distance from 20-DMA moderate.', feat: 'dist_20dma', val: '+3.8%', shap: '+0.02' } ],
+      featVals: [{name:'atr14_pct',val:'1.7%'},{name:'dist_200dma',val:'+14%'},{name:'rs_nifty_20d',val:'+2.6%'},{name:'gap_pct',val:'+0.1%'}],
+      regimeText: 'India VIX 13.8 (falling) · NIFTY above 50 & 200-DMA · breadth positive' },
+    { symbol: 'BAJFINANCE', sector: 'Financials', direction: 1, confidence: 0.66, spark: [40,41,40.5,42,41.5,43,44,43.5,45,45.5],
+      entry: '7,180', stop: '6,930', target: '7,680', qty: '20', atRisk: '5,000', riskPct: '1.5%',
+      holding: 'Swing — planned hold 5–10 sessions (delivery / CNC).',
+      gapNote: 'Holds overnight — gaps can jump the stop.',
+      flags: [],
+      fullShap: [
+        { s: 'DMA stack turned bullish.', feat: 'dma_alignment', val: '1.0', shap: '+0.21' },
+        { s: 'Reclaiming the 52-week-high zone.', feat: 'dist_52w_high', val: '-3.4%', shap: '+0.15' },
+        { s: 'Relative strength vs sector improving.', feat: 'rs_sector', val: '+2.1%', shap: '+0.10' },
+        { s: 'Weekly RSI supportive.', feat: 'weekly_rsi', val: '58.0', shap: '+0.06' },
+        { s: 'Vol trend compressing.', feat: 'gk_vol_trend', val: '-0.2', shap: '+0.04' },
+        { s: 'Daily RSI mid-range.', feat: 'rsi_14', val: '56.0', shap: '+0.02' } ],
+      featVals: [{name:'atr14_pct',val:'2.2%'},{name:'dist_50dma',val:'+5.1%'},{name:'rs_nifty_20d',val:'+1.9%'},{name:'gap_pct',val:'+0.3%'}],
+      regimeText: 'India VIX 13.8 (falling) · NIFTY above 50 & 200-DMA · breadth positive' },
+    { symbol: 'ASIANPAINT', sector: 'Materials', direction: 1, confidence: 0.63, spark: [25,25.3,25,25.6,26,25.8,26.4,26.8,26.6,27.2],
+      entry: '2,910', stop: '2,808', target: '3,114', qty: '48', atRisk: '4,896', riskPct: '1.5%',
+      holding: 'Swing — planned hold 5–10 sessions (delivery / CNC).',
+      gapNote: 'Holds overnight — gaps can jump the stop.',
+      flags: [],
+      fullShap: [
+        { s: 'Recovering above the 50-DMA.', feat: 'dist_50dma', val: '+1.8%', shap: '+0.18' },
+        { s: 'DMA alignment turning up.', feat: 'dma_alignment', val: '0.8', shap: '+0.13' },
+        { s: 'Sector relative strength positive.', feat: 'rs_sector', val: '+1.4%', shap: '+0.09' },
+        { s: 'Weekly RSI recovering.', feat: 'weekly_rsi', val: '52.0', shap: '+0.05' },
+        { s: 'Volatility trend easing.', feat: 'gk_vol_trend', val: '-0.1', shap: '+0.03' },
+        { s: 'Still below 52-week high.', feat: 'dist_52w_high', val: '-11%', shap: '-0.05' } ],
+      featVals: [{name:'atr14_pct',val:'1.6%'},{name:'dist_200dma',val:'-2.0%'},{name:'rs_nifty_20d',val:'+0.9%'},{name:'gap_pct',val:'-0.1%'}],
+      regimeText: 'India VIX 13.8 (falling) · NIFTY above 50 & 200-DMA · breadth positive' },
+    { symbol: 'DIVISLAB', sector: 'Pharma', direction: 1, confidence: 0.61, spark: [18,18.4,18.1,18.8,19,18.9,19.4,19.7,19.6,20.1],
+      entry: '5,240', stop: '5,058', target: '5,604', qty: '27', atRisk: '4,914', riskPct: '1.5%',
+      holding: 'Swing — planned hold 5–10 sessions (delivery / CNC).',
+      gapNote: 'Holds overnight — gaps can jump the stop.',
+      flags: [],
+      fullShap: [
+        { s: 'DMA stack aligning bullishly.', feat: 'dma_alignment', val: '0.9', shap: '+0.19' },
+        { s: 'Pharma sector relative strength strong.', feat: 'rs_sector', val: '+2.8%', shap: '+0.14' },
+        { s: 'Approaching 52-week high.', feat: 'dist_52w_high', val: '-4.2%', shap: '+0.10' },
+        { s: 'Weekly RSI constructive.', feat: 'weekly_rsi', val: '57.0', shap: '+0.06' },
+        { s: 'Vol trend compressing.', feat: 'gk_vol_trend', val: '-0.2', shap: '+0.03' },
+        { s: 'Daily RSI mid-range.', feat: 'rsi_14', val: '55.0', shap: '+0.02' } ],
+      featVals: [{name:'atr14_pct',val:'1.8%'},{name:'dist_50dma',val:'+4.4%'},{name:'rs_nifty_20d',val:'+2.2%'},{name:'gap_pct',val:'+0.2%'}],
+      regimeText: 'India VIX 13.8 (falling) · NIFTY above 50 & 200-DMA · breadth positive' }
+  ];
+
+  // journal
+  intradaySignals = [
+    { time: '03 Jul 09:48', symbol: 'RELIANCE', dir: 'LONG', conf: '0.68', o1:'+0.6R', o2:'+1.1R', o3:'+1.9R', mae:'-0.4%', mfe:'+2.1%', status:'hit_target' },
+    { time: '03 Jul 09:52', symbol: 'INFY', dir: 'LONG', conf: '0.66', o1:'+0.4R', o2:'+0.7R', o3:'+0.5R', mae:'-0.5%', mfe:'+1.0%', status:'pending' },
+    { time: '03 Jul 10:05', symbol: 'HDFCBANK', dir: 'SHORT', conf: '0.61', o1:'-0.3R', o2:'-1.0R', o3:'-1.0R', mae:'-1.3%', mfe:'+0.3%', status:'hit_stop' },
+    { time: '03 Jul 10:22', symbol: 'ICICIBANK', dir: 'LONG', conf: '0.62', o1:'+0.5R', o2:'+0.9R', o3:'+1.2R', mae:'-0.3%', mfe:'+1.4%', status:'hit_target' },
+    { time: '02 Jul 11:10', symbol: 'TATASTEEL', dir: 'LONG', conf: '0.64', o1:'+0.2R', o2:'+0.1R', o3:'+0.0R', mae:'-0.7%', mfe:'+0.6%', status:'expired' },
+    { time: '02 Jul 12:40', symbol: 'MARUTI', dir: 'SHORT', conf: '0.60', o1:'+0.4R', o2:'+0.8R', o3:'+1.6R', mae:'-0.2%', mfe:'+1.8%', status:'hit_target' },
+    { time: '02 Jul 13:15', symbol: 'SUNPHARMA', dir: 'LONG', conf: '0.63', o1:'-0.5R', o2:'-1.0R', o3:'-1.0R', mae:'-1.1%', mfe:'+0.2%', status:'hit_stop' },
+    { time: '01 Jul 09:40', symbol: 'AXISBANK', dir: 'LONG', conf: '0.65', o1:'+0.7R', o2:'+1.3R', o3:'+1.9R', mae:'-0.3%', mfe:'+2.0%', status:'hit_target' },
+    { time: '01 Jul 10:30', symbol: 'WIPRO', dir: 'LONG', conf: '0.61', o1:'+0.1R', o2:'-0.4R', o3:'-1.0R', mae:'-1.0%', mfe:'+0.5%', status:'hit_stop' },
+    { time: '01 Jul 11:55', symbol: 'ONGC', dir: 'LONG', conf: '0.62', o1:'+0.3R', o2:'+0.6R', o3:'+0.9R', mae:'-0.4%', mfe:'+1.1%', status:'hit_target' }
+  ];
+  swingSignals = [
+    { time: '02 Jul 15:45', symbol: 'TITAN', dir: 'LONG', conf: '0.71', o1:'+0.4R', o2:'+1.2R', o3:'+2.0R', mae:'-0.9%', mfe:'+5.2%', status:'hit_target' },
+    { time: '02 Jul 15:45', symbol: 'LT', dir: 'LONG', conf: '0.68', o1:'+0.3R', o2:'+0.8R', o3:'+1.1R', mae:'-1.2%', mfe:'+3.1%', status:'pending' },
+    { time: '28 Jun 15:45', symbol: 'BAJFINANCE', dir: 'LONG', conf: '0.66', o1:'+0.2R', o2:'-0.6R', o3:'-1.0R', mae:'-3.4%', mfe:'+1.0%', status:'hit_stop' },
+    { time: '28 Jun 15:45', symbol: 'ASIANPAINT', dir: 'LONG', conf: '0.63', o1:'+0.1R', o2:'+0.5R', o3:'+1.4R', mae:'-1.1%', mfe:'+4.0%', status:'hit_target' },
+    { time: '24 Jun 15:45', symbol: 'DIVISLAB', dir: 'LONG', conf: '0.61', o1:'+0.3R', o2:'+0.4R', o3:'+0.2R', mae:'-1.8%', mfe:'+2.2%', status:'expired' },
+    { time: '24 Jun 15:45', symbol: 'HCLTECH', dir: 'LONG', conf: '0.64', o1:'+0.5R', o2:'+1.0R', o3:'+1.8R', mae:'-0.8%', mfe:'+4.6%', status:'hit_target' },
+    { time: '20 Jun 15:45', symbol: 'NESTLEIND', dir: 'LONG', conf: '0.62', o1:'-0.4R', o2:'-1.0R', o3:'-1.0R', mae:'-2.9%', mfe:'+0.6%', status:'hit_stop' },
+    { time: '20 Jun 15:45', symbol: 'ULTRACEMCO', dir: 'LONG', conf: '0.65', o1:'+0.6R', o2:'+1.1R', o3:'+1.6R', mae:'-0.7%', mfe:'+3.8%', status:'hit_target' }
+  ];
+  equityIntraday = [0,0.6,-0.4,0.7,1.6,1.2,2.9,1.9,3.6,4.3,3.9,5.2,4.6,6.1,5.4,6.8,7.9,7.2,8.6,9.4];
+  equitySwing =    [0,2.0,1.0,3.1,2.4,4.4,3.4,5.0,6.6,5.8,7.2,8.8,7.9,9.6,11.0,10.2,12.1,13.4];
+
+  models = {
+    INTRADAY: {
+      id: 'intraday_2026-07-01_a3f2', trained: '01 Jul 2026', window: '13 Feb → 30 Jun', nFeat: 24, nFolds: 6,
+      precMean: '0.55', precStd: '0.072',
+      calibPts: [[0.55,0.52],[0.60,0.57],[0.65,0.61],[0.70,0.63],[0.75,0.71],[0.80,0.74]], calibMin: '0.50', calibMax: '0.85',
+      flags: [
+        { tone:'rose', title:'Fold 4 precision 0.42 — inconsistent across time', body:'One CV fold fell below the 0.45 floor. Not averaged away: this window is flagged as a period where similar setups underperformed.' },
+        { tone:'amber', title:'Live/paper drift: −12 pts vs CV over last 30 signals', body:'Recent paper precision is running below CV expectation. Watch for regime change; the model remains usable but the gap is surfaced, not hidden.' }
+      ],
+      folds: [
+        { fold:'1', window:'Feb 13–Mar 12', n:214, prec:0.58, calib:0.041, r:1.42, dd:'-6.8%' },
+        { fold:'2', window:'Mar 13–Apr 09', n:231, prec:0.61, calib:0.033, r:1.55, dd:'-5.1%' },
+        { fold:'3', window:'Apr 10–May 07', n:198, prec:0.49, calib:0.057, r:1.08, dd:'-9.4%' },
+        { fold:'4', window:'May 08–Jun 04', n:176, prec:0.42, calib:0.072, r:0.86, dd:'-12.3%' },
+        { fold:'5', window:'Jun 05–Jun 30', n:242, prec:0.63, calib:0.029, r:1.61, dd:'-4.7%' },
+        { fold:'6', window:'Jul 01–Jul 02', n:220, prec:0.55, calib:0.045, r:1.33, dd:'-7.2%' }
+      ],
+      ic: [
+        { name:'vwap_dist_atr', val:'0.084', w:'100%' },{ name:'vol_zscore', val:'0.071', w:'85%' },
+        { name:'orb_position', val:'0.063', w:'75%' },{ name:'rsi_14', val:'0.052', w:'62%' },
+        { name:'macd_slope', val:'0.048', w:'57%' },{ name:'rs_nifty', val:'0.041', w:'49%' },
+        { name:'ofi_top', val:'0.037', w:'44%' }
+      ],
+      retrains: [
+        { id:'intraday_2026-07-01_a3f2', note:'Active · isotonic recal · 1 red flag', dot:'#34D399' },
+        { id:'intraday_2026-06-24_9c1b', note:'Retired · pre-drift baseline', dot:'#5A6478' },
+        { id:'intraday_2026-06-17_44de', note:'Retired', dot:'#5A6478' }
+      ]
+    },
+    SWING: {
+      id: 'swing_2026-06-30_b7e1', trained: '30 Jun 2026', window: '02 Jan → 27 Jun', nFeat: 21, nFolds: 6,
+      precMean: '0.56', precStd: '0.038',
+      calibPts: [[0.55,0.54],[0.60,0.58],[0.65,0.62],[0.70,0.68],[0.75,0.72],[0.80,0.77]], calibMin: '0.50', calibMax: '0.85',
+      flags: [],
+      folds: [
+        { fold:'1', window:'Jan 02–Feb 06', n:64, prec:0.57, calib:0.038, r:1.71, dd:'-8.1%' },
+        { fold:'2', window:'Feb 07–Mar 13', n:71, prec:0.60, calib:0.031, r:1.88, dd:'-6.9%' },
+        { fold:'3', window:'Mar 14–Apr 21', n:58, prec:0.53, calib:0.049, r:1.44, dd:'-10.2%' },
+        { fold:'4', window:'Apr 22–May 27', n:62, prec:0.55, calib:0.044, r:1.52, dd:'-9.0%' },
+        { fold:'5', window:'May 28–Jun 18', n:69, prec:0.62, calib:0.027, r:1.95, dd:'-5.8%' },
+        { fold:'6', window:'Jun 19–Jun 27', n:55, prec:0.51, calib:0.052, r:1.33, dd:'-11.4%' }
+      ],
+      ic: [
+        { name:'dma_alignment', val:'0.079', w:'100%' },{ name:'rs_sector', val:'0.068', w:'86%' },
+        { name:'dist_52w_high', val:'0.061', w:'77%' },{ name:'weekly_rsi', val:'0.055', w:'70%' },
+        { name:'gk_vol_trend', val:'0.047', w:'59%' },{ name:'rsi_14', val:'0.043', w:'54%' },
+        { name:'macd_hist', val:'0.038', w:'48%' }
+      ],
+      retrains: [
+        { id:'swing_2026-06-30_b7e1', note:'Active · isotonic recal · no red flags', dot:'#34D399' },
+        { id:'swing_2026-06-23_51aa', note:'Retired', dot:'#5A6478' },
+        { id:'swing_2026-06-16_08f9', note:'Retired', dot:'#5A6478' }
+      ]
+    }
+  };
+
+  exclusions = [
+    { label:'Low turnover (< ₹5cr)', n:214, color:'#F43F5E', w:'100%' },
+    { label:'Illiquid (gaps in 20d)', n:63, color:'#FB7185', w:'29%' },
+    { label:'Price < ₹20 (penny)', n:96, color:'#818CF8', w:'45%' },
+    { label:'Listed < 60 sessions', n:55, color:'#818CF8', w:'26%' },
+    { label:'ASM (LT/ST, stage ≥ 1)', n:41, color:'#A5B4FC', w:'19%' },
+    { label:'GSM (all stages)', n:17, color:'#A5B4FC', w:'8%' }
+  ];
+  universeRows = [
+    { symbol:'RELIANCE', core:true, sector:'Energy', turnover:'842', atr:'0.83', status:'included' },
+    { symbol:'HDFCBANK', core:true, sector:'Financials', turnover:'1,204', atr:'0.71', status:'included' },
+    { symbol:'TATASTEEL', core:false, sector:'Metals', turnover:'318', atr:'1.12', status:'included' },
+    { symbol:'INFY', core:true, sector:'IT', turnover:'596', atr:'0.94', status:'included' },
+    { symbol:'YESBANK', core:false, sector:'Financials', turnover:'44', atr:'2.4', status:'ASM_LT2' },
+    { symbol:'RCOM', core:false, sector:'Telecom', turnover:'3.1', atr:'—', status:'GSM_2' },
+    { symbol:'SUZLON', core:false, sector:'Industrials', turnover:'—', atr:'—', status:'PRICE_LT_20' },
+    { symbol:'TITAN', core:true, sector:'Consumer', turnover:'274', atr:'1.9', status:'included' },
+    { symbol:'IDEA', core:false, sector:'Telecom', turnover:'61', atr:'3.6', status:'ASM_ST1' },
+    { symbol:'NEWLISTCO', core:false, sector:'Materials', turnover:'88', atr:'2.1', status:'LISTED_LT_60' },
+    { symbol:'SMALLCAP', core:false, sector:'Textiles', turnover:'2.4', atr:'1.5', status:'LOW_TURNOVER' },
+    { symbol:'BAJFINANCE', core:true, sector:'Financials', turnover:'512', atr:'2.2', status:'included' }
+  ];
+
+  // ---------- handlers ----------
+  setMode(m) { this.setState({ mode: m }); }
+  setPage(p) { this.setState({ page: p }); }
+  onQuery(e) { this.setState({ query: e.target.value }); }
+  onSearchQuery(e) { this.setState({ searchQuery: e.target.value }); }
+  toggleExpand(key) { this.setState(s => ({ expanded: { ...s.expanded, [key]: !s.expanded[key] } })); }
+
+  statusStyle(status) {
+    const map = {
+      hit_target: ['rgba(16,185,129,0.12)','#34D399','rgba(16,185,129,0.28)','target hit'],
+      hit_stop:   ['rgba(244,63,94,0.12)','#FB7185','rgba(244,63,94,0.28)','stopped'],
+      expired:    ['rgba(255,255,255,0.05)','#9AA3B5','rgba(255,255,255,0.12)','expired'],
+      pending:    ['rgba(129,140,248,0.1)','#C7D2FE','rgba(129,140,248,0.22)','pending']
+    };
+    return map[status] || map.pending;
+  }
+  uniStatusStyle(status) {
+    if (status === 'included') return ['rgba(16,185,129,0.12)','#34D399','rgba(16,185,129,0.28)','included'];
+    return ['rgba(244,63,94,0.1)','#FB7185','rgba(244,63,94,0.22)', status];
+  }
+  rColor(v) {
+    if (typeof v !== 'string') return '#C3CAD8';
+    if (v.indexOf('-') === 0) return '#FB7185';
+    if (v.indexOf('+') === 0 && v !== '+0.0R') return '#34D399';
+    return '#C3CAD8';
+  }
+
+  renderVals() {
+    const mode = this.state.mode;
+    const isIntraday = mode === 'INTRADAY';
+    const lossHalt = this.props.lossLimitHalted ?? false;
+
+    // mode toggle
+    const modeItems = ['INTRADAY','SWING'].map(k => {
+      const active = mode === k;
+      return { key:k, label:k, onClick:() => this.setMode(k),
+        bg: active ? 'linear-gradient(135deg, rgba(139,92,246,0.28), rgba(167,139,250,0.16))' : 'transparent',
+        fg: active ? '#EDE9FE' : '#8A93A6',
+        shadow: active ? 'inset 0 0 0 1px rgba(167,139,250,0.4), 0 4px 14px rgba(124,58,237,0.28)' : 'none' };
+    });
+
+    // nav
+    const icons = {
+      scanner: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
+      search: 'M10 4a6 6 0 100 12 6 6 0 000-12zM20 20l-4.2-4.2',
+      journal: 'M4 6h16M4 12h16M4 18h10',
+      model: 'M3 12h4l3 7 4-15 3 8h4',
+      universe: 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5'
+    };
+    const nav = [['scanner','Scanner'],['search','Search'],['journal','Journal'],['model','Model'],['universe','Universe']];
+    const navItems = nav.map(([k,label]) => {
+      const active = this.state.page === k;
+      return { key:k, label, onClick:() => this.setPage(k), icon: icons[k],
+        fg: active ? '#C4B5FD' : '#6B7488',
+        weight: active ? 600 : 500,
+        border: active ? '#8B5CF6' : 'transparent',
+        railBg: active ? 'linear-gradient(150deg, rgba(139,92,246,0.24), rgba(167,139,250,0.12))' : 'rgba(255,255,255,0.02)',
+        railBorder: active ? 'rgba(167,139,250,0.38)' : 'rgba(255,255,255,0.07)',
+        railShadow: active ? '0 6px 20px rgba(124,58,237,0.32)' : 'none' };
+    });
+
+    // scanner cards
+    const src = isIntraday ? this.intradayCards : this.swingCards;
+    const cardsEmpty = isIntraday && lossHalt;
+    const cards = cardsEmpty ? [] : src.map((c, i) => {
+      const key = mode + ':' + c.symbol;
+      const accent = c.direction > 0 ? '#34D399' : '#FB7185';
+      const shapExtreme = Math.max(...c.fullShap.map(x => Math.abs(parseFloat(x.shap)))) || 1;
+      return {
+        ...c, rank: i + 1,
+        isLong: c.direction > 0, isShort: c.direction < 0, accent,
+        sparkPath: this.linePath(c.spark, 118, 36, 3),
+        confNum: c.confidence.toFixed(2),
+        confPct: Math.round(c.confidence * 100) + '%',
+        phrase: this.confPhrase(c.confidence),
+        shap3: c.fullShap.slice(0, 3).map(x => x.s),
+        fullShap: c.fullShap.map(x => {
+          const sv = parseFloat(x.shap), pos = sv >= 0;
+          return { feat:x.feat, val:x.val, shap:x.shap,
+            barColor: pos ? '#34D399' : '#FB7185',
+            barSide: pos ? 'left' : 'right',
+            barW: (Math.abs(sv) / shapExtreme * 46).toFixed(0) + '%' };
+        }),
+        hasFlags: (c.flags || []).length > 0,
+        hasGap: !!c.gapNote, gapNote: c.gapNote || '',
+        toggleLabel: this.state.expanded[key] ? 'Hide detail ▲' : 'Full SHAP · features · regime ▼',
+        expanded: !!this.state.expanded[key],
+        onToggle: () => this.toggleExpand(key)
+      };
+    });
+
+    // journal
+    const rawSig = isIntraday ? this.intradaySignals : this.swingSignals;
+    const q = this.state.query.trim().toUpperCase();
+    const signals = rawSig.filter(r => !q || r.symbol.indexOf(q) >= 0).map(r => {
+      const st = this.statusStyle(r.status);
+      return { ...r,
+        dirColor: r.dir === 'LONG' ? '#34D399' : '#FB7185',
+        c1: this.rColor(r.o1), c2: this.rColor(r.o2), c3: this.rColor(r.o3),
+        stBg: st[0], stFg: st[1], stBorder: st[2], status: st[3] };
+    });
+    const eq = isIntraday ? this.equityIntraday : this.equitySwing;
+    const eqW = 900, eqH = 150, eqPad = 8;
+    const eqMin = Math.min(...eq, 0), eqMax = Math.max(...eq), eqRng = (eqMax - eqMin) || 1;
+    const eqY = v => eqPad + (1 - (v - eqMin) / eqRng) * (eqH - 2 * eqPad);
+    const eqX = i => eqPad + (i / (eq.length - 1)) * (eqW - 2 * eqPad);
+    const equityPath = eq.map((v, i) => (i === 0 ? 'M' : 'L') + eqX(i).toFixed(1) + ' ' + eqY(v).toFixed(1)).join(' ');
+    const equityArea = equityPath + ' L' + eqX(eq.length - 1).toFixed(1) + ' ' + eqY(eqMin).toFixed(1) + ' L' + eqX(0).toFixed(1) + ' ' + eqY(eqMin).toFixed(1) + ' Z';
+    const eqLast = eq[eq.length - 1];
+    const eqColor = eqLast >= 0 ? '#34D399' : '#FB7185';
+
+    // model
+    const mdlSrc = this.models[mode];
+    const cw = 260, ch = 230, cpx0 = 34, cpx1 = 246, cpy0 = 8, cpy1 = 196;
+    const dmin = 0.50, dmax = 0.85, drng = dmax - dmin;
+    const cX = p => cpx0 + (p - dmin) / drng * (cpx1 - cpx0);
+    const cY = p => cpy1 - (p - dmin) / drng * (cpy1 - cpy0);
+    const calibPath = mdlSrc.calibPts.map((p, i) => (i === 0 ? 'M' : 'L') + cX(p[0]).toFixed(1) + ' ' + cY(p[1]).toFixed(1)).join(' ');
+    const calibPts = mdlSrc.calibPts.map(p => ({ x: cX(p[0]).toFixed(1), y: cY(p[1]).toFixed(1) }));
+    const mdl = {
+      ...mdlSrc,
+      hasFlags: mdlSrc.flags.length > 0,
+      noFlags: mdlSrc.flags.length === 0,
+      flags: mdlSrc.flags.map(f => ({
+        title: f.title, body: f.body,
+        bg: f.tone === 'rose' ? 'rgba(244,63,94,0.08)' : 'rgba(129,140,248,0.07)',
+        border: f.tone === 'rose' ? 'rgba(244,63,94,0.28)' : 'rgba(129,140,248,0.22)',
+        fg: f.tone === 'rose' ? '#FB7185' : '#C7D2FE'
+      })),
+      folds: mdlSrc.folds.map(f => ({
+        fold: f.fold, window: f.window, n: f.n,
+        prec: f.prec.toFixed(2), calib: f.calib.toFixed(3), r: f.r.toFixed(2), dd: f.dd,
+        precColor: f.prec < 0.45 ? '#FB7185' : (f.prec < 0.50 ? '#C7D2FE' : '#34D399'),
+        rowBg: f.prec < 0.45 ? 'rgba(244,63,94,0.05)' : 'transparent'
+      }))
+    };
+
+    // search
+    const sq = this.state.searchQuery.trim().toUpperCase();
+    const searchResults = this.searchStocks
+      .filter(s => !sq || s.symbol.indexOf(sq) >= 0 || s.sector.toUpperCase().indexOf(sq) >= 0)
+      .map(s => {
+        const st = this.uniStatusStyle(s.status);
+        return { ...s, bg: st[0], fg: st[1], border: st[2], statusLabel: st[3],
+          isEq: s.status === 'included',
+          hasSetup: !!s.setup, noSetup: !s.setup };
+      });
+
+    // universe
+    const universeRows = this.universeRows.map(u => {
+      const st = this.uniStatusStyle(u.status);
+      return { ...u, bg: st[0], fg: st[1], border: st[2], status: st[3] };
+    });
+
+    return {
+      // chrome
+      modeItems, navItems,
+      regimeText: 'Calm regime — India VIX 13.8, falling. NIFTY above 50 & 200-DMA; historically setups qualify at a normal rate.',
+      lossLabel: lossHalt ? 'HALTED — 3% hit' : 'OK · −0.8% today',
+      lossFg: lossHalt ? '#FB7185' : '#34D399',
+      lossBg: lossHalt ? 'rgba(244,63,94,0.08)' : 'rgba(255,255,255,0.03)',
+      lossBorder: lossHalt ? 'rgba(244,63,94,0.28)' : 'rgba(255,255,255,0.07)',
+
+      // page flags
+      isScanner: this.state.page === 'scanner',
+      isJournal: this.state.page === 'journal',
+      isModel: this.state.page === 'model',
+      isUniverse: this.state.page === 'universe',
+      isSearch: this.state.page === 'search',
+      searchResults, searchQuery: this.state.searchQuery,
+      onSearchQuery: (e) => this.onSearchQuery(e),
+      searchCount: searchResults.length,
+      searchEmpty: searchResults.length === 0,
+      searchNote: 'Look up any NSE stock in the liquidity-filtered universe. Excluded names show their exact reason, so you always know why a stock is or is not tradable — nothing is hidden.',
+      isIntraday, isSwing: !isIntraday,
+
+      // scanner
+      scannerTitle: isIntraday ? 'Intraday setups' : 'Swing setups',
+      scannerSub: cardsEmpty ? '' : cards.length + ' of top 12 ranked · confidence × liquidity',
+      scannerNote: isIntraday
+        ? 'Signals fire only 09:30–14:30 IST, gated at ≥ 0.60 calibrated confidence after the risk engine approves. Ranked by confidence × liquidity — the full universe is never dumped.'
+        : 'Generated post-close for next-day entry, gated at ≥ 0.60 calibrated confidence. Every card carries overnight/gap-risk disclosure; earnings proximity is flagged.',
+      hasCards: cards.length > 0, cards,
+      scannerEmpty: cards.length === 0,
+      emptyTitle: cardsEmpty ? 'New intraday signals halted' : 'No qualifying setups right now',
+      emptyBody: cardsEmpty
+        ? 'Paper P&L reached the −3% daily loss limit. No new intraday signals for the rest of the session — this is the risk engine working, not an error.'
+        : 'Nothing cleared the confidence and risk gates this scan. The system saying "no trade" is a valid, healthy outcome — it will surface setups as they qualify.',
+
+      // journal
+      journalNote: 'Every emitted signal is journaled at emission with full context before any outcome is known — hindsight cannot edit history. Outcomes fill in at each horizon; paper trades model brokerage, STT and slippage.',
+      h1: isIntraday ? '30m' : '1d', h2: isIntraday ? '60m' : '5d', h3: isIntraday ? 'EOD' : '10d',
+      signals, journalCount: signals.length, journalEmpty: signals.length === 0,
+      query: this.state.query, onQuery: (e) => this.onQuery(e),
+      equityPath, equityArea, equityFill: eqLast >= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(244,63,94,0.08)',
+      equityColor: eqColor, equityZeroY: eqY(0).toFixed(1),
+      equityTotal: (eqLast >= 0 ? '+' : '') + eqLast.toFixed(1) + 'R',
+      equityCount: rawSig.length, equityDD: isIntraday ? '−2.1R' : '−1.8R',
+
+      // model
+      modelNote: 'Purged walk-forward cross-validation, ≥ 6 chronological folds with purge + embargo. All folds are shown — averages carry their spread and are never reported alone. Red flags are surfaced, never suppressed.',
+      mdl, calibPath, calibPts, calibMin: mdlSrc.calibMin, calibMax: mdlSrc.calibMax,
+
+      // universe
+      universeNote: 'Liquidity-filtered -EQ universe, rebuilt nightly. T2T (-BE/-BZ) drops mechanically off the series suffix; surveillance and liquidity filters do the rest. Every exclusion keeps its reason so you can answer "why isn\'t stock X shown?".',
+      exclusions: this.exclusions, universeRows
+    };
+  }
+}
+</script>
+</body>
+</html>

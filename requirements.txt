@@ -1,0 +1,20 @@
+# Pinned per CLAUDE.md §2. Regenerate pins deliberately, never silently.
+fyers-apiv3==3.1.14
+fastapi==0.139.0
+uvicorn==0.49.0
+lightgbm==4.6.0
+shap==0.51.0
+scikit-learn==1.9.0
+pandas==3.0.3
+numpy==2.4.6
+polars==1.42.1
+duckdb==1.5.4
+pyarrow==24.0.0
+pyotp==2.10.0
+pytz==2026.2
+httpx==0.28.1
+apscheduler==3.11.3
+pyyaml==6.0.1
+
+# dev/test
+pytest==9.1.1

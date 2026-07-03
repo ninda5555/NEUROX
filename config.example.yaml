@@ -1,0 +1,47 @@
+# NSE Trading Assistant — configuration template.
+# Copy to config.yaml and fill in credentials. config.yaml is gitignored;
+# credentials never go in code, logs, or the DB (CLAUDE.md §12).
+
+fyers:
+  app_id: ""             # Fyers App ID, e.g. XXXXXXXXX-100
+  secret_key: ""         # Fyers app Secret Key
+  redirect_uri: "https://127.0.0.1"
+  fyers_id: ""           # Fyers client/login id (optional, for TOTP-assisted login)
+  totp_secret: ""        # optional TOTP seed; used only to print the current code
+  log_dir: "fyers_logs"
+
+paths:
+  db: "data/app.db"
+  candles: "data/candles"
+  features: "data/features"
+  models: "models"
+  tokens: ".tokens"
+  surveillance_cache: "data/surveillance"
+
+universe:                 # CLAUDE.md §4
+  min_turnover_cr: 5.0    # median daily turnover over rolling 20 sessions, ₹ crore
+  min_price: 20.0         # penny-stock guard
+  min_listed_sessions: 60
+  min_nonzero_vol_sessions: 18   # of the last 20 sessions
+  exclude_gsm_all: true          # every GSM stage excluded
+  exclude_asm_min_stage: 1       # ASM (ST & LT) stage >= this excluded
+  surveillance_lookback_days: 7  # how far back to search for the latest REG_IND file
+
+backfill:                 # CLAUDE.md §3.3: 5-min max 100 days/request, daily max 366
+  daily_days: 730
+  fivemin_days: 120
+
+signals:                  # CLAUDE.md §6.3
+  confidence_threshold: 0.60
+  scanner_top_n: 12
+
+risk:                     # CLAUDE.md §7
+  capital: 1000000        # ₹ paper capital
+  intraday_risk_pct: 1.0
+  swing_risk_pct: 1.5
+  max_position_notional_pct: 20.0
+  daily_loss_limit_pct: 3.0
+  loss_limit_warn_frac: 0.75
+
+costs:                    # CLAUDE.md §13
+  per_side_pct: 0.05      # brokerage + STT + slippage estimate, per side

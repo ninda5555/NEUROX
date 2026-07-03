@@ -1,0 +1,22 @@
+# Credentials & tokens — never committed (CLAUDE.md §12)
+config.yaml
+.tokens/
+
+# Data & model artifacts (regenerable, large)
+data/
+/models/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Logs
+*.log
+fyers_logs/
+
+# OS / editor
+.DS_Store
