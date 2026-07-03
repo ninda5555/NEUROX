@@ -134,10 +134,11 @@ class FyersClient:
             if not self._token:
                 raise RuntimeError("no access token — run src/scripts/daily_auth.py first")
             from fyers_apiv3 import fyersModel  # only src/fyers/ may import this
-            log_dir = str(self._cfg.path("fyers.log_dir"))
+            log_dir = self._cfg.path("fyers.log_dir")
+            log_dir.mkdir(parents=True, exist_ok=True)  # SDK crashes if absent
             self._model = fyersModel.FyersModel(
                 client_id=self._cfg["fyers.app_id"], token=self._token,
-                is_async=False, log_path=log_dir,
+                is_async=False, log_path=str(log_dir),
             )
         return self._model
 
