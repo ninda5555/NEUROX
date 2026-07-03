@@ -47,6 +47,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.tf in ("5min", "both"):
         syms = (args.symbols.split(",") if args.symbols
                 else latest_included_symbols(conn) or eq_candidate_symbols(conn))
+        # benchmark index rides along: rs_nifty needs 5-min NIFTY bars
+        if not args.symbols and "NSE:NIFTY50-INDEX" not in syms:
+            syms = ["NSE:NIFTY50-INDEX"] + syms
         plans.append(("5min", args.days or cfg["backfill.fivemin_days"], syms))
 
     for tf, days, syms in plans:
