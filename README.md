@@ -21,12 +21,12 @@ rules. Read it before changing anything. The UI design specification lives in
 
 | Phase | Scope | Status |
 |---|---|---|
-| P0 | Foundations: config, Fyers client + rate limiter, daily auth, symbol master, universe pipeline, backfill | Built — awaiting live-data verification & sign-off |
-| P1 | Features & data: candle store, feature pipelines, tradability masks, regime table, IC report | Not started |
-| P2 | Models: LightGBM + isotonic calibration + purged walk-forward CV + SHAP sentences + registry | Not started |
-| P3 | Signals & risk: emission gate, scanner, risk engine, journal + outcomes, paper trading | Not started |
-| P4 | UI: React dashboard per `design/` | Not started |
-| P5 | Shadow operation: ≥ 4 weeks paper trading, live-vs-CV divergence tracking | Not started |
+| P0 | Foundations: config, Fyers client + rate limiter, daily auth, symbol master, universe pipeline, backfill | ✅ Done (live-verified) |
+| P1 | Features & data: candle store, feature pipelines, tradability masks, regime table, IC report | ✅ Done |
+| P2 | Models: LightGBM + isotonic calibration + purged walk-forward CV + SHAP sentences + registry | ✅ Done (red flags active) |
+| P3 | Signals & risk: emission gate, scanner, risk engine, journal + outcomes, paper trading | ✅ Done |
+| P4 | UI: React dashboard per `design/` | ✅ Done |
+| P5 | Shadow operation: ≥ 4 weeks paper trading, live-vs-CV divergence tracking | ▶ Infra ready — clock starts first live session |
 | V2 | Order placement — **gated on P5 exit criteria** | Deliberately unwired |
 
 ## Setup
@@ -60,3 +60,24 @@ python -m src.scripts.backfill --tf both
 
 All Fyers REST calls go through a shared rate limiter (10/s, 200/min,
 100,000/day). Time is IST everywhere; a naive datetime is a bug.
+
+## Daily shadow-operation runbook (P5)
+
+Each trading morning (takes ~2 minutes):
+
+```bash
+python -m src.scripts.daily_auth        # SEBI daily re-auth (paste auth_code)
+python -m src.scripts.shadow            # live session: WS -> bars -> signals
+```
+
+Keep running once (any time): the off-session automation and the dashboard:
+
+```bash
+python -m src.jobs.scheduler            # swing scan 15:50 · top-up 16:20 ·
+                                        # universe 20:30 · retrain Sat 10:00
+python -m uvicorn src.api.app:app --port 8000   # dashboard at localhost:8000
+```
+
+P5 exit criteria (gates V2 order placement): >= 4 weeks of paper operation
+with live-vs-CV divergence tracked and within bounds. The order module stays
+unwired until then.
