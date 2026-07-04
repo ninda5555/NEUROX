@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body { margin: 0; padding: 0; }
+body {
+  background: #0A0E17;
+  color: #E6EAF2;
+  font-family: 'Geist', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.09); border-radius: 6px; border: 2px solid #0A0E17; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+@keyframes livepulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+.livepulse { animation: livepulse 1.8s ease-in-out infinite; }
+input::placeholder { color: #4A5468; }
+
+.glass-card {
+  background: linear-gradient(180deg, rgba(167,139,250,0.08), rgba(255,255,255,0.016));
+  border: 1px solid rgba(167,139,250,0.17);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+}
+.glass-soft {
+  background: linear-gradient(180deg, rgba(167,139,250,0.05), rgba(255,255,255,0.012));
+  border: 1px solid rgba(167,139,250,0.12);
+  border-radius: 16px;
+}
