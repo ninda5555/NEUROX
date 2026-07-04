@@ -19,6 +19,7 @@ from src.risk import stops as stopmod
 from src.risk.loss_limit import DayRiskTracker
 from src.risk.portfolio_flags import flags_for_candidate
 from src.risk.sizing import size_position
+from src.universe.earnings import earnings_flag
 
 
 @dataclass
@@ -67,6 +68,10 @@ def emit(conn: sqlite3.Connection, store: CandleStore, cfg, *, model_id: str,
     row = pd.DataFrame([{f: c.features.get(f, np.nan) for f in feature_list}])
     shap_top = top_contributors(booster, row, feature_list, k=6)
     flags = flags_for_candidate(conn, store, c.symbol)
+    if c.mode == "SWING":
+        ef = earnings_flag(conn, c.symbol.split(":")[-1].rsplit("-", 1)[0])
+        if ef:
+            flags.append(ef)
     if capped:
         flags.append("Position capped at 20% of capital notional")
     ls = tracker.status()

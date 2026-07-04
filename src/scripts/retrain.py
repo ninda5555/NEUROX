@@ -19,7 +19,8 @@ from src.features import intraday as intraday_mod
 from src.features import swing as swing_mod
 from src.features.build import REGIME_COLS
 from src.models import cv as cvmod
-from src.models.calibrate import calibration_curve_points, fit_isotonic
+from src.models.calibrate import (RegimeCalibrator, calibration_curve_points,
+                                  fit_isotonic)
 from src.models.train import LGBM_PARAMS, train_fn_for_cv, train_lgbm
 from src.models.registry import save_model
 from src.timeutil import IST
@@ -46,6 +47,10 @@ def prepare(mode: str, df: pd.DataFrame) -> tuple[pd.DataFrame, list[str], str]:
         shorts = df[df["label_short"].notna()].copy()
         shorts["direction"], shorts["label"] = -1.0, shorts["label_short"]
         out = pd.concat([longs, shorts], ignore_index=True)
+        # Lopez de Prado sample uniqueness: overlapping same-day labels per
+        # symbol are serially dependent; weight each row by 1/N(symbol, day)
+        day = pd.DatetimeIndex(out["ts"]).strftime("%Y-%m-%d")
+        out["_w"] = 1.0 / out.groupby([out["symbol"], day])["label"].transform("size")
         return out, base + ["direction"], "label"
     base = swing_mod.FEATURE_COLS + REGIME_COLS
     out = df[df["label_long"].notna()].copy()
@@ -110,8 +115,13 @@ def main(argv: list[str] | None = None) -> int:
 
         oof_pred = np.concatenate([r.test_pred_raw for r in results])
         oof_y = np.concatenate([r.test_label for r in results])
-        iso = fit_isotonic(oof_pred, oof_y)
+        oof_b = np.concatenate([r.test_bucket for r in results])
+        iso = RegimeCalibrator().fit(oof_pred, oof_y, oof_b)
         curve = calibration_curve_points(iso.transform(oof_pred), oof_y)
+        per_bucket = {b: [round(float(iso.transform([oof_pred.max()], b)[0]), 3)]
+                      for b in iso.buckets}
+        print(f"regime calibration buckets: {list(iso.buckets)} | "
+              f"honest ceiling per bucket at max raw score: {per_bucket}")
 
         cv_report = {"threshold": threshold,
                      "precision_mean": float(np.mean(precs)) if precs else None,

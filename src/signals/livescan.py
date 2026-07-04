@@ -19,6 +19,7 @@ from src.features import intraday as intraday_mod
 from src.features import swing as swing_mod
 from src.features.build import REGIME_COLS
 from src.features.regime import NIFTY_SYMBOL, regime_feature_frame
+from src.models.calibrate import RegimeCalibrator, bucket_of
 from src.models.registry import load_active
 from src.risk.loss_limit import DayRiskTracker
 from src.signals.engine import Candidate, emit
@@ -102,7 +103,10 @@ def intraday_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
         for d in (1, -1):
             fd = {**feat, "direction": float(d)}
             X = pd.DataFrame([{f: fd.get(f, np.nan) for f in feats}])
-            p = float(cal.transform(booster.predict(X.astype(np.float32)))[0])
+            raw_p = booster.predict(X.astype(np.float32))
+            bkt = bucket_of(fd.get("regime_vix"), fd.get("regime_breadth"))
+            p = float(cal.transform(raw_p, bkt)[0]) if isinstance(cal, RegimeCalibrator) \
+                else float(cal.transform(raw_p)[0])
             if best is None or p > best[0]:
                 best = (p, d, fd)
         p, d, fd = best
@@ -159,7 +163,10 @@ def swing_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
         feat = {**{c: (None if pd.isna(last[c]) else float(last[c]))
                    for c in swing_mod.FEATURE_COLS}, **regime_feats}
         X = pd.DataFrame([{f2: feat.get(f2, np.nan) for f2 in feats}])
-        p = float(cal.transform(booster.predict(X.astype(np.float32)))[0])
+        raw_p = booster.predict(X.astype(np.float32))
+        bkt = bucket_of(feat.get("regime_vix"), feat.get("regime_breadth"))
+        p = float(cal.transform(raw_p, bkt)[0]) if isinstance(cal, RegimeCalibrator) \
+            else float(cal.transform(raw_p)[0])
         price = float(d["close"].iloc[-1])
         cands.append(Candidate(symbol=sym, mode="SWING", direction=1,
                                confidence=p, price=price,

@@ -30,10 +30,13 @@ def train_lgbm(X_tr: pd.DataFrame, y_tr, X_val: pd.DataFrame, y_val,
     """Returns (booster, predict_fn). predict_fn(X)->raw probability."""
     import lightgbm as lgb
 
+    w_tr = X_tr["_w"].to_numpy() if "_w" in X_tr.columns else None
+    w_va = X_val["_w"].to_numpy() if "_w" in X_val.columns else None
     dtr = lgb.Dataset(X_tr[feature_names].astype(np.float32),
-                      label=np.asarray(y_tr, dtype=np.float32))
+                      label=np.asarray(y_tr, dtype=np.float32), weight=w_tr)
     dva = lgb.Dataset(X_val[feature_names].astype(np.float32),
-                      label=np.asarray(y_val, dtype=np.float32), reference=dtr)
+                      label=np.asarray(y_val, dtype=np.float32), weight=w_va,
+                      reference=dtr)
     booster = lgb.train(LGBM_PARAMS, dtr, num_boost_round=NUM_ROUNDS,
                         valid_sets=[dva],
                         callbacks=[lgb.early_stopping(EARLY_STOP, verbose=False)])

@@ -13,7 +13,8 @@ from src.features import shared
 from src.features.labels import swing_labels
 
 
-def build_symbol_frame(daily: pd.DataFrame, nifty_daily: pd.DataFrame | None = None) -> pd.DataFrame:
+def build_symbol_frame(daily: pd.DataFrame, nifty_daily: pd.DataFrame | None = None,
+                       sector_ret20: pd.Series | None = None) -> pd.DataFrame:
     d = daily.reset_index(drop=True).copy()
 
     # --- shared ---
@@ -46,7 +47,13 @@ def build_symbol_frame(daily: pd.DataFrame, nifty_daily: pd.DataFrame | None = N
     else:
         d["rs_nifty_20d"] = np.nan
 
-    d["rs_sector"] = np.nan  # nullable until a sector source exists
+    if sector_ret20 is not None:
+        own_dates = pd.DatetimeIndex(d["ts"]).date
+        sec = pd.Series([sector_ret20.get(x, np.nan) for x in own_dates],
+                        index=d.index)
+        d["rs_sector"] = (d["close"].pct_change(20) - sec) * 100
+    else:
+        d["rs_sector"] = np.nan  # sector unknown for this symbol
 
     lab = swing_labels(daily)
     for c in lab.columns:

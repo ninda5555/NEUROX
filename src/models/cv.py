@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from src.features.ic_filter import compute_ic_report
+from src.models.calibrate import bucket_of
 
 HORIZON_SESSIONS = {"INTRADAY": 1, "SWING": 11}
 RISK_PCT = {"INTRADAY": 1.0, "SWING": 1.5}       # §7 defaults, R -> % capital
@@ -42,6 +43,7 @@ class FoldResult:
     kept_features: list[str]
     test_pred_raw: np.ndarray = field(repr=False, default=None)
     test_label: np.ndarray = field(repr=False, default=None)
+    test_bucket: np.ndarray = field(repr=False, default=None)
 
 
 def select_features(frame: pd.DataFrame, feature_cols: list[str], label_col: str,
@@ -133,8 +135,9 @@ def run_cv(frame: pd.DataFrame, mode: str, feature_cols: list[str],
         val_from = tr_dates[int(len(tr_dates) * 0.85)]
         va, tr_core = tr[tr["_date"] >= val_from], tr[tr["_date"] < val_from]
 
-        predict = train_fn(tr_core[kept], tr_core[label_col],
-                           va[kept], va[label_col], kept)
+        cols = kept + (["_w"] if "_w" in tr_core.columns else [])
+        predict = train_fn(tr_core[cols], tr_core[label_col],
+                           va[cols], va[label_col], kept)
         iso = fit_isotonic(predict(va[kept]), va[label_col].to_numpy())
         raw_te = predict(te[kept])
         p_te = iso.transform(raw_te)
@@ -158,6 +161,9 @@ def run_cv(frame: pd.DataFrame, mode: str, feature_cols: list[str],
             max_drawdown_pct=max_drawdown_r(r[order]) * RISK_PCT[mode],
             kept_features=kept,
             test_pred_raw=raw_te, test_label=y_te,
+            test_bucket=np.array([bucket_of(v, b) for v, b in zip(
+                te.get("regime_vix", pd.Series(np.nan, index=te.index)),
+                te.get("regime_breadth", pd.Series(np.nan, index=te.index)))]),
         ))
 
     flags = skipped + red_flags(results)

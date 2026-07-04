@@ -66,17 +66,40 @@ def build_mode_features(mode: str, conn: sqlite3.Connection, store: CandleStore,
         nifty_daily = nifty if not nifty.empty else None
         feature_cols = swing_mod.FEATURE_COLS
 
+    sector_of = {r["symbol"]: r["sector"] for r in conn.execute(
+        "SELECT symbol, sector FROM instruments WHERE sector IS NOT NULL")}
+    cached: dict[str, pd.DataFrame] = {}
+    sector_ret: dict[str, pd.Series] = {}
+    if mode == "SWING":
+        # pass 1: equal-weight 20-session return per sector by date
+        per_sector: dict[str, list[pd.Series]] = {}
+        for sym in symbols:
+            candles = store.read_candles(tf, sym)
+            cached[sym] = candles
+            sec = sector_of.get(sym)
+            if sec and len(candles) >= 60:
+                r20 = candles["close"].pct_change(20)
+                r20.index = pd.DatetimeIndex(candles["ts"]).date
+                per_sector.setdefault(sec, []).append(r20)
+        for sec, series in per_sector.items():
+            if len(series) >= 3:  # need real peers, not a self-comparison
+                sector_ret[sec] = pd.concat(series, axis=1).mean(axis=1)
+
     frames = []
     skipped = 0
     for sym in symbols:
-        candles = store.read_candles(tf, sym)
+        candles = cached.get(sym)
+        if candles is None:
+            candles = store.read_candles(tf, sym)
         if len(candles) < 60:
             skipped += 1
             continue
         if mode == "INTRADAY":
             f = intraday_mod.build_symbol_frame(candles, nifty_5m_close)
         else:
-            f = swing_mod.build_symbol_frame(candles, nifty_daily)
+            sec = sector_of.get(sym)
+            f = swing_mod.build_symbol_frame(candles, nifty_daily,
+                                             sector_ret.get(sec))
         f["symbol"] = sym
         frames.append(f)
 

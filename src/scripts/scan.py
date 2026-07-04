@@ -21,6 +21,7 @@ from src.config import load_config
 from src.data.store import CandleStore
 from src.journal.outcomes import evaluate_pending
 from src.journal.paper import settle_paper_trades
+from src.models.calibrate import RegimeCalibrator, bucket_of
 from src.models.registry import load_active
 from src.risk.loss_limit import DayRiskTracker
 from src.scripts.retrain import load_mode_frame
@@ -81,7 +82,10 @@ def main(argv: list[str] | None = None) -> int:
             if args.mode == "INTRADAY":
                 feat_d["direction"] = float(d)
             X = pd.DataFrame([{f: feat_d.get(f, np.nan) for f in feats}])
-            p = float(cal.transform(booster.predict(X.astype(np.float32)))[0])
+            raw_p = booster.predict(X.astype(np.float32))
+            bkt = bucket_of(feat_d.get("regime_vix"), feat_d.get("regime_breadth"))
+            p = float(cal.transform(raw_p, bkt)[0]) if isinstance(cal, RegimeCalibrator) \
+                else float(cal.transform(raw_p)[0])
             if best is None or p > best[0]:
                 best = (p, d, feat_d)
         p, d, feat_d = best

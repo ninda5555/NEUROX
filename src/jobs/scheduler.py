@@ -23,8 +23,10 @@ from src.journal.outcomes import evaluate_pending
 from src.journal.paper import settle_paper_trades
 from src.signals.livescan import swing_pass
 from src.timeutil import IST
+from src.universe.earnings import fetch_earnings_calendar
 from src.universe.master import (build_universe, eq_candidate_symbols,
                                  latest_included_symbols)
+from src.universe.sectors import update_sectors
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +60,15 @@ def job_candle_topup():
     backfill_many(client, store, syms + ["NSE:NIFTY50-INDEX"], "5min", days=3)
     n = evaluate_pending(conn, store)
     settle_paper_trades(conn, store, cfg["costs.per_side_pct"])
+    try:
+        cal = fetch_earnings_calendar(conn)
+        log.info("earnings calendar: %d upcoming results dates", len(cal))
+    except Exception:
+        log.exception("earnings calendar refresh failed (previous map kept)")
+    try:
+        update_sectors(conn)
+    except Exception:
+        log.exception("sector refresh failed (existing sectors kept)")
     for mode in ("INTRADAY", "SWING"):
         drift_check(conn, mode)
     log.info("top-up done; %d outcome rows refreshed", n)
