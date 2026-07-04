@@ -18,7 +18,6 @@ from src.config import load_config
 from src.features import intraday as intraday_mod
 from src.features import swing as swing_mod
 from src.features.build import REGIME_COLS
-from src.features.ic_filter import compute_ic_report
 from src.models import cv as cvmod
 from src.models.calibrate import calibration_curve_points, fit_isotonic
 from src.models.train import LGBM_PARAMS, train_fn_for_cv, train_lgbm
@@ -102,10 +101,7 @@ def main(argv: list[str] | None = None) -> int:
         # final model: train on everything with a validation tail; isotonic on
         # the CV's out-of-fold test predictions
         print("\ntraining final model …")
-        rep = compute_ic_report(frame, feature_cols, label_col, mode)
-        kept = rep.kept or feature_cols
-        if "direction" in feature_cols and "direction" not in kept:
-            kept += ["direction"]
+        kept = cvmod.select_features(frame, feature_cols, label_col, mode)
         dates = np.array(sorted(pd.DatetimeIndex(frame["ts"]).date))
         val_from = dates[int(len(dates) * 0.9)]
         dcol = pd.DatetimeIndex(frame["ts"]).date

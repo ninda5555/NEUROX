@@ -44,6 +44,22 @@ class FoldResult:
     test_label: np.ndarray = field(repr=False, default=None)
 
 
+def select_features(frame: pd.DataFrame, feature_cols: list[str], label_col: str,
+                    mode: str) -> list[str]:
+    """IC selection. For stacked long+short frames a directional feature's
+    MARGINAL IC cancels to ~0 even when it is strongly predictive per side,
+    so IC is computed per direction subset and the max |IC| wins."""
+    base = [c for c in feature_cols if c != "direction"]
+    if "direction" in feature_cols:
+        rep_l = compute_ic_report(frame[frame["direction"] > 0], base, label_col, mode)
+        rep_s = compute_ic_report(frame[frame["direction"] < 0], base, label_col, mode)
+        kept = sorted(set(rep_l.kept) | set(rep_s.kept),
+                      key=lambda f: base.index(f))
+        return (kept or base) + ["direction"]
+    rep = compute_ic_report(frame, base, label_col, mode)
+    return rep.kept or base
+
+
 def session_folds(dates: list, n_folds: int, initial_train_frac: float = 0.3):
     """Split the session calendar: warmup for first training, then n_folds
     equal contiguous test windows."""
@@ -110,10 +126,7 @@ def run_cv(frame: pd.DataFrame, mode: str, feature_cols: list[str],
             continue
 
         # leakage-clean feature selection on train only
-        rep = compute_ic_report(tr, feature_cols, label_col, mode)
-        kept = rep.kept or feature_cols
-        if "direction" in feature_cols and "direction" not in kept:
-            kept = kept + ["direction"]
+        kept = select_features(tr, feature_cols, label_col, mode)
 
         # validation tail of the training window (early stopping + fold calib)
         tr_dates = sorted(tr["_date"].unique())
