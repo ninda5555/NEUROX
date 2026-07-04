@@ -52,9 +52,18 @@ class SurveillanceList:
     src_date: dt.date
     stale: bool
     measures: dict[str, list[Measure]] = field(default_factory=dict)  # nse_code -> measures
+    by_isin: dict[str, list[Measure]] = field(default_factory=dict)
 
     def for_symbol(self, nse_code: str) -> list[Measure]:
         return self.measures.get(nse_code.upper(), [])
+
+    def for_instrument(self, nse_code: str, isin: str | None) -> list[Measure]:
+        out = list(self.measures.get(nse_code.upper(), []))
+        if isin:
+            for m in self.by_isin.get(isin.upper(), []):
+                if not any(x.kind == m.kind and x.stage == m.stage for x in out):
+                    out.append(m)
+        return out
 
 
 def _cache_path(cache_dir: Path, day: dt.date) -> Path:
@@ -76,7 +85,60 @@ def _download_for_day(day: dt.date) -> bytes | None:
                     return r.content
             except httpx.HTTPError:
                 continue
-    return None
+    # legacy CSV gone (CLAUDE.md §4 reality update): current-state JSON APIs
+    return _download_json_apis()
+
+
+ASM_API = "https://www.nseindia.com/api/reportASM"
+GSM_API = "https://www.nseindia.com/api/reportGSM"
+_GSM_DESC_RE = re.compile(r"GSM\s+Stage\s+([0-9IVXL]+)", re.I)
+
+
+def _roman_or_int(tok: str) -> int | None:
+    tok = tok.strip().upper()
+    if tok.isdigit():
+        return int(tok)
+    roman = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6}
+    return roman.get(tok)
+
+
+def normalize_json_lists(asm: dict, gsm: list) -> str:
+    """ASM/GSM JSON payloads -> our consolidated CSV text (cache format)."""
+    rows = ["SYMBOL,ISIN,SECURITY NAME,GSM STAGE,ASM LT STAGE,ASM ST STAGE"]
+    def q(x):
+        x = str(x or "").strip()
+        return '"' + x.replace('"', "'") + '"' if "," in x else x
+    for r in gsm or []:
+        stage = None
+        m = _GSM_DESC_RE.search(str(r.get("survDesc") or ""))
+        if m:
+            stage = _roman_or_int(m.group(1))
+        if stage is None:
+            stage = _roman_or_int(str(r.get("gsmStage") or ""))
+        if stage is None:
+            stage = 1  # flagged but unparseable -> never ignore
+        rows.append(f"{q(r.get('symbol'))},{q(r.get('isin'))},{q(r.get('companyName'))},{stage},,")
+    for key in ("longterm", "shortterm"):
+        for r in ((asm or {}).get(key) or {}).get("data") or []:
+            m = re.search(r"([0-9IVXL]+)\s*$", str(r.get("asmSurvIndicator") or ""))
+            stage = _roman_or_int(m.group(1)) if m else 1
+            cells = [q(r.get("symbol")), q(r.get("isin")), q(r.get("companyName")), "", "", ""]
+            cells[4 if key == "longterm" else 5] = str(stage or 1)
+            rows.append(",".join(cells))
+    return "\n".join(rows) + "\n"
+
+
+def _download_json_apis() -> bytes | None:
+    with httpx.Client(headers=BROWSER_HEADERS, timeout=30, follow_redirects=True) as client:
+        try:
+            client.get("https://www.nseindia.com/reports/asm")
+            asm = client.get(ASM_API).json()
+            gsm = client.get(GSM_API).json()
+        except (httpx.HTTPError, ValueError):
+            return None
+    if not asm and not gsm:
+        return None
+    return normalize_json_lists(asm, gsm).encode()
 
 
 _STAGE_RE = re.compile(r"(\d+)")
@@ -85,8 +147,10 @@ _STAGE_RE = re.compile(r"(\d+)")
 def _parse_stage(cell: str) -> int | None:
     """'1' / 'Stage I'... -> stage number; blank/'-'/'NIL' -> None."""
     cell = cell.strip().upper()
-    if not cell or cell in {"-", "NA", "NIL", "N.A.", "0"}:
+    if not cell or cell in {"-", "NA", "NIL", "N.A."}:
         return None
+    if cell == "0":
+        return 0  # GSM stage 0 is a real measure (CLAUDE.md §4)
     m = _STAGE_RE.search(cell)
     if m:
         return int(m.group(1))
@@ -115,6 +179,7 @@ def parse_reg_ind(content: bytes, src_date: dt.date, stale: bool = False) -> Sur
         )
     header = [c.strip().upper() for c in rows[header_idx]]
     sym_col = next(i for i, c in enumerate(header) if "SYMBOL" in c)
+    isin_col = next((i for i, c in enumerate(header) if "ISIN" in c), None)
 
     def tokens(i: int) -> set[str]:
         return set(re.split(r"[^A-Z]+", header[i]))
@@ -136,9 +201,11 @@ def parse_reg_ind(content: bytes, src_date: dt.date, stale: bool = False) -> Sur
 
     out = SurveillanceList(src_date=src_date, stale=stale)
     for row in rows[header_idx + 1:]:
-        if len(row) <= sym_col or not row[sym_col].strip():
+        isin = (row[isin_col].strip().upper()
+                if isin_col is not None and len(row) > isin_col else "")
+        if (len(row) <= sym_col or not row[sym_col].strip()) and not isin:
             continue
-        code = row[sym_col].strip().upper()
+        code = row[sym_col].strip().upper() if len(row) > sym_col else ""
         measures: list[Measure] = []
         for cols, kind in ((gsm_cols, "GSM"), (asm_lt_cols, "ASM_LT"),
                            (asm_st_cols, "ASM_ST"), (asm_plain, "ASM_LT")):
@@ -148,7 +215,10 @@ def parse_reg_ind(content: bytes, src_date: dt.date, stale: bool = False) -> Sur
                     if stage is not None:
                         measures.append(Measure(kind=kind, stage=stage))
         if measures:
-            out.measures.setdefault(code, []).extend(measures)
+            if code:
+                out.measures.setdefault(code, []).extend(measures)
+            if isin:
+                out.by_isin.setdefault(isin, []).extend(measures)
     return out
 
 

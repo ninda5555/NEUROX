@@ -99,7 +99,7 @@ def build_universe(conn: sqlite3.Connection, cfg, store=None,
         metrics: liqmod.LiquidityMetrics | None = None
 
         if reason is None and surv is not None:
-            reason = _surveillance_reason(surv.for_symbol(ins.nse_code), cfg)
+            reason = _surveillance_reason(surv.for_instrument(ins.nse_code, ins.isin), cfg)
 
         if reason is None and not skip_liquidity:
             daily = store.read_candles("1d", ins.symbol) if store is not None else None
