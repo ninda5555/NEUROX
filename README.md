@@ -81,3 +81,14 @@ python -m uvicorn src.api.app:app --port 8000   # dashboard at localhost:8000
 P5 exit criteria (gates V2 order placement): >= 4 weeks of paper operation
 with live-vs-CV divergence tracked and within bounds. The order module stays
 unwired until then.
+
+## Daily use — one command
+
+```bash
+python -m src.run
+```
+
+That is the entire daily routine: it checks the token (prompts the ~1-minute
+Fyers login only if needed), opens the dashboard at http://localhost:8000, and
+runs the all-day live scanner. Watch the dashboard; qualifying setups appear as
+cards, an empty scanner means "no trade" (the system working).
