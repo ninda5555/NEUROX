@@ -1,10 +1,32 @@
+// When a static snapshot is embedded (offline preview build), serve from it;
+// otherwise hit the live API.
+const SNAP = (typeof window !== 'undefined' && window.__NEUROX_SNAPSHOT__) || null
+
 const j = (r) => { if (!r.ok) throw new Error(r.status); return r.json() }
-export const getStatus = () => fetch('/api/status').then(j)
-export const getScanner = (mode) => fetch(`/api/scanner?mode=${mode}`).then(j)
-export const getJournal = (mode, q = '') => fetch(`/api/journal?mode=${mode}&q=${encodeURIComponent(q)}`).then(j)
-export const getModel = (mode) => fetch(`/api/model?mode=${mode}`).then(j)
-export const getUniverse = () => fetch('/api/universe').then(j)
-export const getSearch = (q) => fetch(`/api/search?q=${encodeURIComponent(q)}`).then(j)
+
+function jFilter(journal, q) {
+  if (!q) return journal
+  const up = q.toUpperCase()
+  const signals = journal.signals.filter((s) => s.symbol.toUpperCase().includes(up))
+  return { ...journal, signals }
+}
+function sFilter(search, q) {
+  if (!q) return search
+  const up = q.toUpperCase()
+  const rows = search.rows.filter(
+    (r) => (r.nse_code || '').toUpperCase().includes(up) || (r.sector || '').toUpperCase().includes(up))
+  return { ...search, rows, q }
+}
+
+export const getStatus = () => SNAP ? Promise.resolve(SNAP.status) : fetch('/api/status').then(j)
+export const getScanner = (mode) => SNAP ? Promise.resolve(SNAP.scanner[mode]) : fetch(`/api/scanner?mode=${mode}`).then(j)
+export const getJournal = (mode, q = '') => SNAP ? Promise.resolve(jFilter(SNAP.journal[mode], q)) : fetch(`/api/journal?mode=${mode}&q=${encodeURIComponent(q)}`).then(j)
+export const getModel = (mode) => SNAP ? Promise.resolve(SNAP.model[mode]) : fetch(`/api/model?mode=${mode}`).then(j)
+export const getUniverse = () => SNAP ? Promise.resolve(SNAP.universe) : fetch('/api/universe').then(j)
+export const getSearch = (q) => SNAP ? Promise.resolve(sFilter(SNAP.search, q)) : fetch(`/api/search?q=${encodeURIComponent(q)}`).then(j)
+
+export const isPreview = () => !!SNAP
+export const previewNote = () => SNAP && SNAP._preview_note
 
 export const fmt = (v, d = 2) => (v == null || Number.isNaN(v) ? '—' : Number(v).toFixed(d))
 export const fmtIn = (v) => (v == null ? '—' : Number(v).toLocaleString('en-IN'))
