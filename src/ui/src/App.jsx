@@ -34,11 +34,11 @@ export default function App() {
         <div className="flex-1 min-w-0 flex flex-col">
           <TopBar mode={mode} setMode={setMode} status={status} />
           <StatusStrip status={status} />
-          {isPreview() && (
+          {isPreview() && previewNote() && (
             <div className="mx-7 mb-2 px-4 py-2 rounded-lg text-[12px] text-perilight flex items-center gap-2"
                  style={{ background: 'rgba(129,140,248,0.10)', border: '1px solid rgba(129,140,248,0.28)' }}>
               <span>👁</span>
-              <span><b>Design preview</b> — this is your dashboard populated with a sample board (confidence gate lowered to 0.35 so cards show). In real daily use it gates at 0.60 and quiet days are normal. Same screens run live on your machine.</span>
+              <span>{previewNote()}</span>
             </div>
           )}
           <main className="flex-1 w-full p-7">
