@@ -58,6 +58,9 @@ def top_candidates(conn, store, cfg, syms, asof, n=8):
         if len(df) < 60 or df["ts"].iloc[-1].date() != asof.date():
             continue
         f = im.build_symbol_frame(df, bench).iloc[-1]
+        atr_pct = f.get("atr_pct", np.nan)
+        if not np.isfinite(atr_pct) or atr_pct <= 0:
+            continue  # same tradability filter the emit path applies
         feat = {**{c: (None if pd.isna(f[c]) else float(f[c])) for c in im.FEATURE_COLS},
                 **regime_feats}
         best = 0.0
