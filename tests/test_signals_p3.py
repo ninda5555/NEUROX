@@ -122,6 +122,29 @@ def test_emit_gate_and_journal_first(conn, cfg_t, tmp_path, booster2):
                 tracker=tr) is None
 
 
+def test_cost_viability_gate_filters_tight_stops(conn, cfg_t, tmp_path, booster2):
+    conn.execute("INSERT INTO models (model_id, mode, trained_at, feature_list,"
+                 "lgbm_params, calibration, cv_report, artifact_path, is_active)"
+                 " VALUES ('m1','INTRADAY','x','[]','{}','{}','{}','p',1)")
+    store = CandleStore(tmp_path / "c")
+    tr = DayRiskTracker(conn, 1_000_000)
+    # price 1000, tiny ATR -> stop_dist 0.15 (0.015%); round-trip cost/share =
+    # 2*0.05%*1000 = 1.0, so min stop = 5*1.0 = 5.0 >> 0.15 -> filtered
+    tight = Candidate(symbol="NSE:CALM-EQ", mode="INTRADAY", direction=1,
+                      confidence=0.80, price=1000.0, atr=0.1,
+                      features={"f1": 2.0, "direction": 1.0})
+    assert emit(conn, store, cfg_t, model_id="m1", booster=booster2,
+                feature_list=["f1", "direction"], candidate=tight, regime=None,
+                tracker=tr) is None                      # no edge after costs
+    # a healthy ATR (stop_dist ~15) clears the gate
+    healthy = Candidate(symbol="NSE:MOVER-EQ", mode="INTRADAY", direction=1,
+                        confidence=0.80, price=1000.0, atr=10.0,
+                        features={"f1": 2.0, "direction": 1.0})
+    assert emit(conn, store, cfg_t, model_id="m1", booster=booster2,
+                feature_list=["f1", "direction"], candidate=healthy, regime=None,
+                tracker=tr) is not None
+
+
 # ---------- outcomes + paper settlement ----------
 def _seed_signal(conn, ts, entry=100.0, stop=98.0, target=104.0, mode="INTRADAY"):
     cur = conn.execute(

@@ -17,8 +17,10 @@ def open_paper_trade(conn: sqlite3.Connection, signal_id: int,
                      per_side_pct: float = 0.05) -> int:
     sig = dict(conn.execute("SELECT * FROM signals WHERE signal_id=?",
                             (signal_id,)).fetchone())
-    d = int(sig["direction"])
-    entry_fill = sig["entry"] * (1 + d * per_side_pct / 100.0)  # adverse slip
+    # Fill at the signal price; the all-in per-side cost (brokerage + STT +
+    # slippage) is charged once as a round-trip costs line at settlement, so
+    # it is not double-counted via adverse fills (CLAUDE.md §13).
+    entry_fill = sig["entry"]
     cur = conn.execute(
         """INSERT INTO paper_trades (signal_id, opened_at, entry_fill, qty)
            VALUES (?,?,?,?)""",
@@ -43,8 +45,9 @@ def settle_paper_trades(conn: sqlite3.Connection, store: CandleStore,
         if res is None:
             continue
         d = int(sig["direction"])
-        exit_fill = res["price"] * (1 - d * per_side_pct / 100.0)  # adverse
+        exit_fill = res["price"]
         qty = sig["qty"]
+        # single all-in round-trip cost (per_side_pct on each leg's notional)
         costs = (sig["entry_fill"] + exit_fill) * qty * per_side_pct / 100.0
         pnl = d * (exit_fill - sig["entry_fill"]) * qty - costs
         stop_dist = abs(sig["entry"] - sig["stop_loss"])

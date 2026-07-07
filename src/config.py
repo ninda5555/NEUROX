@@ -45,6 +45,7 @@ DEFAULTS: dict[str, Any] = {
         "max_position_notional_pct": 20.0,
         "daily_loss_limit_pct": 3.0,
         "loss_limit_warn_frac": 0.75,
+        "min_stop_to_cost": 5.0,
     },
     "costs": {"per_side_pct": 0.05},
 }

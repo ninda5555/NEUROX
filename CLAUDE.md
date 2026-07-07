@@ -127,6 +127,7 @@ Shared across modes; runs after the model, before the UI.
 - **Volatility-targeted sizing:** `qty = (capital × risk_pct) / (stop_distance)`, with stop distance from the mode's ATR rule — position size shrinks automatically as volatility expands. Default risk_pct 1% intraday, 1.5% swing; hard cap: single position ≤ 20% of capital notional.
 - **Portfolio flags:** sector exposure (NSE sector mapping in instruments): 2 open signals in one sector → flag; pairwise 60-day return correlation of open positions > 0.7 → flag. Flags are shown, not silently enforced (V1 is decision support).
 - **Daily loss limit:** paper P&L ≤ −3% of capital (config) → no new intraday signals for the day, banner in UI. 75% of limit → warning state.
+- **Cost-viability gate (added 06-Jul-2026 from a P5 Day-1 finding):** a setup whose natural (ATR) stop distance is so tight that modeled round-trip cost dominates the risk has no realistic edge after costs, so it is *not emitted*. Rule: `stop_distance ≥ risk.min_stop_to_cost × round_trip_cost_per_share`, where `round_trip_cost_per_share = 2 × costs.per_side_pct% × price` (both sides, all-in). Default `min_stop_to_cost` = 5 (round-trip cost ≤ ~20% of risk → a stop-out is ≈ −1.2R, not −2R). This is a filter, never a stop-widening (widening would distort the model's learned barriers; the deeper fix — a minimum triple-barrier width in §5 labels — is deferred to the next retrain and noted here).
 - Every risk plan ships: entry, stop, target (2:1 default), qty, ₹-at-risk, % capital at risk, and the mode-appropriate holding-period statement.
 
 ## 8. Validation framework (Requirement 4)
@@ -295,7 +296,7 @@ Premium dark fintech aesthetic. Claude Design implements from this section.
 
 ## 13. Trade journal & outcomes (Requirement 7)
 
-Every emitted signal is journaled at emission time with the complete context (features, SHAP, confidence, regime, VIX, mode, risk plan) — before any outcome is known, so hindsight can't edit history. A scheduled evaluator fills `signal_outcomes` at each horizon from stored candles; paper trades additionally model costs (brokerage + STT + estimated slippage = config, default 0.05%/side). Weekly digest view: realized hit-rate vs stated confidence per bucket — the calibration promise, audited against reality, in the user's face.
+Every emitted signal is journaled at emission time with the complete context (features, SHAP, confidence, regime, VIX, mode, risk plan) — before any outcome is known, so hindsight can't edit history. A scheduled evaluator fills `signal_outcomes` at each horizon from stored candles; paper trades model costs as a single all-in round-trip = 2 × `costs.per_side_pct`% of notional (brokerage + STT + estimated slippage, default 0.05%/side → 0.10% round trip). *Correction (06-Jul-2026):* the first cut double-counted this (adverse slippage baked into both fills **and** a separate costs line ≈ 0.20% round trip); fills are now booked at signal price with one explicit `costs_modeled` line so the figure is honest, not inflated. Weekly digest view: realized hit-rate vs stated confidence per bucket — the calibration promise, audited against reality, in the user's face.
 
 ## 14. Feasibility matrix (all 10 requirements)
 

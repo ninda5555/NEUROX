@@ -58,6 +58,12 @@ def emit(conn: sqlite3.Connection, store: CandleStore, cfg, *, model_id: str,
         risk_pct_cfg = cfg["risk.swing_risk_pct"]
     target = stopmod.target_for(c.price, stop)
 
+    # Cost-viability gate (§7): if the natural stop is so tight that modeled
+    # round-trip cost dominates the risk, the setup has no edge after costs.
+    round_trip_per_share = 2 * cfg["costs.per_side_pct"] / 100.0 * c.price
+    if abs(c.price - stop) < cfg["risk.min_stop_to_cost"] * round_trip_per_share:
+        return None
+
     qty, capped = size_position(capital=cfg["risk.capital"], risk_pct=risk_pct_cfg,
                                 entry=c.price, stop=stop,
                                 max_notional_pct=cfg["risk.max_position_notional_pct"])

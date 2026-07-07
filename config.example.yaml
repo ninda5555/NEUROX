@@ -42,6 +42,7 @@ risk:                     # CLAUDE.md §7
   max_position_notional_pct: 20.0
   daily_loss_limit_pct: 3.0
   loss_limit_warn_frac: 0.75
+  min_stop_to_cost: 5.0      # skip setups whose stop is < 5× round-trip cost (§7)
 
 costs:                    # CLAUDE.md §13
   per_side_pct: 0.05      # brokerage + STT + slippage estimate, per side
