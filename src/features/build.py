@@ -49,7 +49,8 @@ def _write_monthly(root: Path, mode: str, df: pd.DataFrame) -> int:
 
 def build_mode_features(mode: str, conn: sqlite3.Connection, store: CandleStore,
                         features_root: Path, symbols: list[str],
-                        label_col: str = "label_long") -> tuple[pd.DataFrame, ICReport]:
+                        label_col: str = "label_long",
+                        min_barrier_pct: float | None = None) -> tuple[pd.DataFrame, ICReport]:
     """Returns (labeled unmasked frame used for IC, IC report)."""
     regime = regime_feature_frame(conn)
     regime["regime_date"] = regime["regime_date"].astype(str)
@@ -95,7 +96,8 @@ def build_mode_features(mode: str, conn: sqlite3.Connection, store: CandleStore,
             skipped += 1
             continue
         if mode == "INTRADAY":
-            f = intraday_mod.build_symbol_frame(candles, nifty_5m_close)
+            f = intraday_mod.build_symbol_frame(candles, nifty_5m_close,
+                                                min_barrier_pct=min_barrier_pct)
         else:
             sec = sector_of.get(sym)
             f = swing_mod.build_symbol_frame(candles, nifty_daily,

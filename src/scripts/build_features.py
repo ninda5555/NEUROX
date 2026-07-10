@@ -49,8 +49,11 @@ def main(argv: list[str] | None = None) -> int:
 
     modes = ["INTRADAY", "SWING"] if args.mode == "both" else [args.mode]
     for mode in modes:
+        min_barrier_pct = (cfg["labels.min_barrier_atr_pct"] if mode == "INTRADAY"
+                           else None)
         _, rep = build_mode_features(mode, conn, store,
-                                     cfg.path("paths.features"), symbols)
+                                     cfg.path("paths.features"), symbols,
+                                     min_barrier_pct=min_barrier_pct)
         print()
         print(format_report(rep))
         print()
