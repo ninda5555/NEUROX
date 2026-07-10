@@ -124,6 +124,18 @@ def get_valid_token(config) -> str:
     return cached["access_token"]
 
 
+def headless_login(config) -> str:
+    """Opt-in unattended re-auth (fyers.auto_login: true only — see
+    src.fyers.auto_login). Completes the same daily auth-code flow as the
+    manual paste-the-URL path, then exchanges + caches the token exactly
+    like save_token()/exchange_auth_code() do for a human login."""
+    from src.fyers.auto_login import headless_auth_code
+    auth_code = headless_auth_code(config)
+    token = exchange_auth_code(config, auth_code)
+    save_token(config, token)
+    return token
+
+
 def token_status(config) -> dict:
     """For CLI/UI status: valid / issued_at / re-auth deadline."""
     cached = load_cached(config)

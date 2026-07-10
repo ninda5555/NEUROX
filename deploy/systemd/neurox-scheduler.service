@@ -1,0 +1,16 @@
+[Unit]
+Description=NEUROX job scheduler (scans, universe rebuild, retrain, digest)
+After=network-online.target neurox-dashboard.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=neurox
+WorkingDirectory=/opt/neurox
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/neurox/.venv/bin/python -m src.jobs.scheduler
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

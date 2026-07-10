@@ -2,11 +2,16 @@
 All times IST. The in-session shadow runner is a foreground command
 (src/scripts/shadow.py) so its logs stay in front of the operator.
 
+Every job is wrapped by `_safe` (deploy/ unattended VPS): one job raising
+must never take the whole scheduler down, so a single failing step (a stale
+surveillance fetch, a Fyers timeout) logs and the rest of the day proceeds.
+
     python -m src.jobs.scheduler
 """
 
 from __future__ import annotations
 
+import functools
 import logging
 
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -29,6 +34,30 @@ from src.universe.master import (build_universe, eq_candidate_symbols,
 from src.universe.sectors import update_sectors
 
 log = logging.getLogger(__name__)
+
+
+def _safe(fn):
+    """One job's exception must not kill the scheduler thread (deploy/
+    unattended VPS): log the full traceback, keep the process alive so the
+    next scheduled run still fires."""
+    @functools.wraps(fn)
+    def wrapper():
+        try:
+            fn()
+        except Exception:
+            log.exception("job %s failed — continuing (next run still scheduled)",
+                          fn.__name__)
+    return wrapper
+
+
+def job_daily_auto_login():
+    """~06:00 IST: opt-in headless re-auth (fyers.auto_login: true only).
+    No-op when off (the default) — the manual flow in src.run handles it."""
+    cfg = load_config()
+    if not cfg["fyers.auto_login"]:
+        return
+    auth.headless_login(cfg)
+    log.info("headless daily re-auth complete")
 
 
 def _ctx():
@@ -98,13 +127,27 @@ def job_daily_backfill_universe_candles():
     backfill_many(client, store, eq_candidate_symbols(conn), "1d", days=7)
 
 
-def job_weekly_retrain():
-    """Saturday 10:00 IST: retrain both modes on refreshed features (§6.2)."""
+def _retrain_both():
     from src.scripts.build_features import main as build_features
     from src.scripts.retrain import main as retrain
     build_features([])
     retrain(["--mode", "both"])
+
+
+def job_weekly_retrain():
+    """Saturday 10:00 IST (training.retrain_schedule: weekly, the default):
+    retrain both modes on refreshed features (§6.2)."""
+    _retrain_both()
     log.info("weekly retrain complete")
+
+
+def job_daily_retrain():
+    """~16:45 IST Mon-Fri, post-close (training.retrain_schedule: daily):
+    same retrain, run every trading day instead of once a week. Every run
+    still registers as a new, never-overwritten row in `models` (§9) — old
+    models stay queryable even at daily cadence."""
+    _retrain_both()
+    log.info("daily retrain complete")
 
 
 def job_weekly_digest():
@@ -118,17 +161,29 @@ def job_weekly_digest():
 def main() -> None:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    cfg = load_config()
     s = BlockingScheduler(timezone=IST)
     wd = "mon-fri"
-    s.add_job(job_swing_scan, CronTrigger(day_of_week=wd, hour=15, minute=50, timezone=IST))
-    s.add_job(job_candle_topup, CronTrigger(day_of_week=wd, hour=16, minute=20, timezone=IST))
-    s.add_job(job_universe_rebuild, CronTrigger(day_of_week=wd, hour=20, minute=30, timezone=IST))
-    s.add_job(job_daily_backfill_universe_candles,
+    s.add_job(_safe(job_daily_auto_login),
+              CronTrigger(day_of_week=wd, hour=6, minute=0, timezone=IST))
+    s.add_job(_safe(job_swing_scan), CronTrigger(day_of_week=wd, hour=15, minute=50, timezone=IST))
+    s.add_job(_safe(job_candle_topup), CronTrigger(day_of_week=wd, hour=16, minute=20, timezone=IST))
+    s.add_job(_safe(job_universe_rebuild), CronTrigger(day_of_week=wd, hour=20, minute=30, timezone=IST))
+    s.add_job(_safe(job_daily_backfill_universe_candles),
               CronTrigger(day_of_week=wd, hour=21, minute=0, timezone=IST))
-    s.add_job(job_weekly_retrain, CronTrigger(day_of_week="sat", hour=10, minute=0, timezone=IST))
-    s.add_job(job_weekly_digest, CronTrigger(day_of_week="fri", hour=16, minute=45, timezone=IST))
-    log.info("scheduler up (IST): swing 15:50 · top-up 16:20 · universe 20:30 "
-             "· backfill 21:00 · retrain Sat 10:00 · digest Fri 16:45")
+
+    retrain_schedule = cfg["training.retrain_schedule"]
+    if retrain_schedule == "daily":
+        s.add_job(_safe(job_daily_retrain), CronTrigger(day_of_week=wd, hour=16, minute=45, timezone=IST))
+        retrain_desc = "retrain daily 16:45"
+    else:
+        s.add_job(_safe(job_weekly_retrain), CronTrigger(day_of_week="sat", hour=10, minute=0, timezone=IST))
+        retrain_desc = "retrain Sat 10:00"
+    s.add_job(_safe(job_weekly_digest), CronTrigger(day_of_week="fri", hour=16, minute=45, timezone=IST))
+
+    log.info("scheduler up (IST): auto-login 06:00%s · swing 15:50 · top-up 16:20 "
+             "· universe 20:30 · backfill 21:00 · %s · digest Fri 16:45",
+             " (auto_login off)" if not cfg["fyers.auto_login"] else "", retrain_desc)
     s.start()
 
 

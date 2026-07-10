@@ -28,7 +28,7 @@ Read this file before writing any code or designing any screen. Claude Code and 
 | ML | LightGBM (binary classifier per mode) + SHAP + isotonic calibration | PDF Part 14: gradient boosting over deep nets for tabular finance |
 | Validation | Purged walk-forward CV with embargo (simplified CPCV) | PDF Part 8, adapted to solo-dev scale |
 | Broker API | Fyers API v3 (fyers-apiv3 SDK) | Existing account & app (App ID 2PAWCOT3W3-100) |
-| Deployment | Local PC now → Indian VPS with static IP when order placement is added (V2) | SEBI static-IP rule applies to order APIs, not data |
+| Deployment | Local PC, or a single always-on Ubuntu 22.04 VPS (`deploy/`, any region ≥4GB RAM) for V1 predictions/paper-trading → Indian VPS with static IP only when order placement is added (V2) | SEBI static-IP rule applies to order APIs, not data; V1 has no order API so any Ubuntu box works |
 | V1 scope | Signals + paper trading. Order APIs deliberately not wired | PDF Phase 5: shadow before capital |
 | Timezone | Everything internal in IST (Asia/Kolkata); store ISO-8601 with offset | NSE trading hours 09:15–15:30 IST |
 
@@ -294,6 +294,8 @@ Premium dark fintech aesthetic. Claude Design implements from this section.
 - **V2 order engine (design now, build later):** INTRADAY/CNC product types per mode, ≤10 orders/sec limiter, MPP-awareness for market orders, manual-confirm gate on every order, 15:15 square-off scheduler for MIS.
 - Credentials only ever in `config.yaml` (gitignored) / OS keyring. Never in code, logs, or the DB.
 
+**Unattended cloud deployment (`deploy/`, added 10-Jul-2026):** V1 (predictions/paper-trading only) can run 24/7 on a single always-on Ubuntu 22.04 VPS instead of a local machine — `deploy/server_setup.sh` installs it, `deploy/systemd/*.service` keep the dashboard and scheduler running (`Restart=always`). The dashboard binds `127.0.0.1` only and is reached over a private Tailscale tunnel (`tailscale serve`) — never a public bind, enforced by `deploy/firewall.sh` denying the port publicly and by `tests/test_deploy.py`. Self-retraining cadence is `training.retrain_schedule` (`weekly`, Sat 10:00 IST, default; or `daily`, ~16:45 IST). Every scheduled job is wrapped so one failure logs and the scheduler keeps running (§17.11). The SEBI daily-2FA requirement is never removed; `fyers.auto_login` (config, **off by default**) optionally automates completing it headlessly via TOTP+PIN at 06:00 IST — a real security trade-off (seed+PIN then live in `config.yaml` on the server), documented prominently in `SETUP.md` and left off unless explicitly opted into.
+
 ## 13. Trade journal & outcomes (Requirement 7)
 
 Every emitted signal is journaled at emission time with the complete context (features, SHAP, confidence, regime, VIX, mode, risk plan) — before any outcome is known, so hindsight can't edit history. A scheduled evaluator fills `signal_outcomes` at each horizon from stored candles; paper trades model costs as a single all-in round-trip = 2 × `costs.per_side_pct`% of notional (brokerage + STT + estimated slippage, default 0.05%/side → 0.10% round trip). *Correction (06-Jul-2026):* the first cut double-counted this (adverse slippage baked into both fills **and** a separate costs line ≈ 0.20% round trip); fills are now booked at signal price with one explicit `costs_modeled` line so the figure is honest, not inflated. Weekly digest view: realized hit-rate vs stated confidence per bucket — the calibration promise, audited against reality, in the user's face.
@@ -351,3 +353,5 @@ The earlier prototype (`Trading-bot-claude-nse-intraday-trading-assistant-*.zip`
 8. V1 places no orders. The order module stays unwired until P5 exit criteria pass.
 9. Time is IST everywhere; naive datetimes are a bug.
 10. This file is the source of truth — update it when reality changes.
+11. Every scheduled job (`src/jobs/scheduler.py`) is wrapped so one job's failure logs and the scheduler keeps running — a single bad day must never take down an unattended deployment.
+12. The dashboard is never bound to a public interface, on a local machine or a cloud VPS — `127.0.0.1` + a private tunnel only.

@@ -17,6 +17,8 @@ DEFAULTS: dict[str, Any] = {
         "redirect_uri": "https://127.0.0.1",
         "fyers_id": "",
         "totp_secret": "",
+        "pin": "",
+        "auto_login": False,
         "log_dir": "fyers_logs",
     },
     "paths": {
@@ -38,6 +40,7 @@ DEFAULTS: dict[str, Any] = {
     },
     "backfill": {"daily_days": 730, "fivemin_days": 120},
     "labels": {"min_barrier_atr_pct": 0.30},
+    "training": {"retrain_schedule": "weekly"},  # "weekly" (Sat 10:00) | "daily" (~16:45 IST, Mon-Fri)
     "signals": {"confidence_threshold": 0.60, "scanner_top_n": 12},
     "risk": {
         "capital": 1_000_000,

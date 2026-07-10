@@ -1,0 +1,18 @@
+[Unit]
+Description=NEUROX dashboard (FastAPI + /ws) — Tailscale-private, no public bind
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=neurox
+WorkingDirectory=/opt/neurox
+Environment=PYTHONUNBUFFERED=1
+# 127.0.0.1 only — never 0.0.0.0. Reached over Tailscale's virtual interface,
+# never exposed to the public internet (see deploy/firewall.sh).
+ExecStart=/opt/neurox/.venv/bin/uvicorn src.api.app:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

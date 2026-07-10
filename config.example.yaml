@@ -8,7 +8,14 @@ fyers:
   redirect_uri: "https://127.0.0.1"
   fyers_id: ""           # Fyers client/login id (optional, for TOTP-assisted login)
   totp_secret: ""        # optional TOTP seed; used only to print the current code
+                          # (or, if auto_login is on, to complete the daily login)
   log_dir: "fyers_logs"
+  # --- unattended cloud deployment only (SETUP.md "Run on a cloud server") ---
+  auto_login: false      # SECURITY TRADE-OFF, off by default — see SETUP.md.
+                          # true = a 06:00 IST job completes the daily SEBI
+                          # re-auth headlessly using totp_secret + pin below.
+                          # false (default) = today's manual paste-the-URL flow.
+  pin: ""                # Fyers PIN — only read when auto_login: true
 
 paths:
   db: "data/app.db"
@@ -33,6 +40,10 @@ backfill:                 # CLAUDE.md §3.3: 5-min max 100 days/request, daily m
 
 labels:                   # CLAUDE.md §5
   min_barrier_atr_pct: 0.30   # floor intraday barrier/stop ATR at 0.30% of price
+
+training:                 # CLAUDE.md §6.2, deploy/ scheduler
+  retrain_schedule: "weekly"  # "weekly" (Sat 10:00 IST, default) or "daily"
+                               # (~16:45 IST Mon-Fri, after the candle top-up)
 
 signals:                  # CLAUDE.md §6.3
   confidence_threshold: 0.60
