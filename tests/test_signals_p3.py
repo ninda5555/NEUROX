@@ -48,6 +48,15 @@ def test_stops_snap_beyond_orb_and_target_rr():
     assert swing_stop(100.0, 2.0) == 95.0
 
 
+def test_intraday_stop_atr_floor():
+    # tiny ATR (0.05 = 0.05% of 100) is floored to 0.30% -> stop dist 1.5*0.30
+    stop = intraday_stop(100.0, +1, atr5=0.05, orb_low=None, orb_high=None,
+                         min_barrier_pct=0.30)
+    assert stop == pytest.approx(100 - 1.5 * 0.30)   # 99.55, not 99.925
+    # a healthy ATR is used as-is
+    assert intraday_stop(100.0, +1, atr5=2.0, orb_low=None, orb_high=None) == 97.0
+
+
 def test_loss_limit_states(conn):
     tr = DayRiskTracker(conn, capital=1_000_000, limit_pct=3.0)
     assert tr.status()["state"] == "ok" and tr.allows_new_intraday()

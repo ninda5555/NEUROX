@@ -31,6 +31,9 @@ backfill:                 # CLAUDE.md §3.3: 5-min max 100 days/request, daily m
   daily_days: 730
   fivemin_days: 120
 
+labels:                   # CLAUDE.md §5
+  min_barrier_atr_pct: 0.30   # floor intraday barrier/stop ATR at 0.30% of price
+
 signals:                  # CLAUDE.md §6.3
   confidence_threshold: 0.60
   scanner_top_n: 12

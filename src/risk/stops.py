@@ -6,6 +6,7 @@ from __future__ import annotations
 
 TARGET_RR = 2.0
 ORB_BUFFER_FRAC = 0.10  # snap 0.1×ATR beyond the structure level
+MIN_BARRIER_ATR_PCT = 0.30  # §5: same ATR floor the labels use
 
 HOLDING_INTRADAY = "Intraday — auto square-off by 15:15 IST."
 HOLDING_SWING = "Swing — planned hold 5–10 sessions (delivery / CNC)."
@@ -14,9 +15,13 @@ GAP_NOTE_SWING = ("Holds overnight — gaps can jump the stop; the plan's risk "
 
 
 def intraday_stop(entry: float, direction: int, atr5: float,
-                  orb_low: float | None, orb_high: float | None) -> float:
+                  orb_low: float | None, orb_high: float | None,
+                  min_barrier_pct: float = MIN_BARRIER_ATR_PCT) -> float:
     """ATR stop, widened beyond the opening-range level when that structure
-    sits between entry and the raw ATR stop."""
+    sits between entry and the raw ATR stop. The ATR is floored at
+    min_barrier_pct% of price so the live stop matches the model's trained
+    barriers on calm stocks (§5)."""
+    atr5 = max(atr5, min_barrier_pct / 100.0 * entry)
     raw = entry - direction * 1.5 * atr5
     buf = ORB_BUFFER_FRAC * atr5
     if direction > 0 and orb_low is not None and raw > orb_low - buf and orb_low < entry:

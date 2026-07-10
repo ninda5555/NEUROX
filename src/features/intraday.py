@@ -20,7 +20,8 @@ def _session_groups(d: pd.DataFrame):
     return d.groupby(pd.DatetimeIndex(d["ts"]).date, sort=False, group_keys=False)
 
 
-def build_symbol_frame(df5: pd.DataFrame, nifty_5min_close: pd.Series | None = None) -> pd.DataFrame:
+def build_symbol_frame(df5: pd.DataFrame, nifty_5min_close: pd.Series | None = None,
+                       min_barrier_pct: float | None = None) -> pd.DataFrame:
     """df5: ascending 5-min bars for one symbol (IST). Returns the wide
     feature frame including labels and masks."""
     d = df5.reset_index(drop=True).copy()
@@ -85,7 +86,9 @@ def build_symbol_frame(df5: pd.DataFrame, nifty_5min_close: pd.Series | None = N
 
     d["ofi_top"] = np.nan  # nullable: live-only feature (5-level depth, top-N)
 
-    lab = intraday_labels(df5)
+    from src.features.labels import MIN_BARRIER_ATR_PCT
+    lab = intraday_labels(df5, min_barrier_pct=(min_barrier_pct
+                          if min_barrier_pct is not None else MIN_BARRIER_ATR_PCT))
     for c in lab.columns:
         d[c] = lab[c].to_numpy()
     return d

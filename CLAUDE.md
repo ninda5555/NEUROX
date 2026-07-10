@@ -92,10 +92,10 @@ One mode enum threads through everything: `INTRADAY | SWING`. Signal logic is se
 |---|---|---|
 | Bars | 5-min (aggregated from ticks/1-min) | Daily (+ weekly context) |
 | Label horizon | Rest-of-day (square-off 15:15) | 5–10 sessions |
-| Label definition | Triple-barrier on 5-min bars: +1 if TP (1.5×ATR₅) hit before SL (1×ATR₅) before 15:15, else 0 | Triple-barrier on daily bars: TP 2×ATR₁₄d vs SL 1.25×ATR₁₄d within 10 sessions |
+| Label definition | Triple-barrier on 5-min bars: +1 if TP (1.5×ATR₅) hit before SL (1×ATR₅) before 15:15, else 0. **Barrier ATR is floored (added 06-Jul-2026, P5 Day-1 root-cause fix): `atr_eff = max(ATR₅, labels.min_barrier_atr_pct% × price)` so barriers can't collapse below trading-cost/noise level on calm stocks — otherwise the model learns sub-cost noise moves.** | Triple-barrier on daily bars: TP 2×ATR₁₄d vs SL 1.25×ATR₁₄d within 10 sessions |
 | Entry window | 09:30–14:30 only (skip open auction noise, no fresh entries near close) | Signals generated post-close for next-day entry |
 | Order type (V2) | Fyers productType: INTRADAY (= "MIS" at other brokers; auto square-off) | productType: CNC (delivery) |
-| Stop style | 1.5×ATR(5-min), snapped beyond structure (ORB level) | 2.5×ATR(daily) — wider, gap-aware; gaps CAN blow through it and UI must say so |
+| Stop style | 1.5×ATR(5-min) on the same floored `atr_eff` as the labels, snapped beyond structure (ORB level) — keeps live stops consistent with what the model was trained on | 2.5×ATR(daily) — wider, gap-aware; gaps CAN blow through it and UI must say so |
 | Extra risk | Daily loss limit halts new intraday signals | Overnight/gap risk disclosure on every card; earnings-date proximity flag |
 
 ## 6. Signal engine (Requirements 3 & 6)

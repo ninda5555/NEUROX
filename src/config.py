@@ -37,6 +37,7 @@ DEFAULTS: dict[str, Any] = {
         "surveillance_lookback_days": 7,
     },
     "backfill": {"daily_days": 730, "fivemin_days": 120},
+    "labels": {"min_barrier_atr_pct": 0.30},
     "signals": {"confidence_threshold": 0.60, "scanner_top_n": 12},
     "risk": {
         "capital": 1_000_000,

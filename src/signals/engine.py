@@ -49,7 +49,8 @@ def emit(conn: sqlite3.Connection, store: CandleStore, cfg, *, model_id: str,
         return None
 
     if c.mode == "INTRADAY":
-        stop = stopmod.intraday_stop(c.price, c.direction, c.atr, c.orb_low, c.orb_high)
+        stop = stopmod.intraday_stop(c.price, c.direction, c.atr, c.orb_low,
+                                     c.orb_high, cfg["labels.min_barrier_atr_pct"])
         holding, gap_note = stopmod.HOLDING_INTRADAY, None
         risk_pct_cfg = cfg["risk.intraday_risk_pct"]
     else:

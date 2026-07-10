@@ -25,6 +25,7 @@ from src.features.shared import atr
 from src.timeutil import INTRADAY_ENTRY_END, INTRADAY_ENTRY_START, INTRADAY_SQUAREOFF
 
 CIRCUIT_DAILY_PCT = 19.9  # widest common band; conservative mask
+MIN_BARRIER_ATR_PCT = 0.30  # §5: floor barrier/stop ATR at 0.30% of price
 
 
 def locked_bar_mask(df: pd.DataFrame) -> pd.Series:
@@ -53,11 +54,14 @@ def _walk_barriers(highs: np.ndarray, lows: np.ndarray, tp: float, sl: float,
 
 
 def intraday_labels(df5: pd.DataFrame, atr_period: int = 5,
-                    tp_mult: float = 1.5, sl_mult: float = 1.0) -> pd.DataFrame:
+                    tp_mult: float = 1.5, sl_mult: float = 1.0,
+                    min_barrier_pct: float = MIN_BARRIER_ATR_PCT) -> pd.DataFrame:
     """df5: one symbol's 5-min bars (ascending, IST). Returns label_long,
-    label_short, mask columns aligned to df5."""
+    label_short, mask columns aligned to df5. The barrier ATR is floored at
+    min_barrier_pct% of price (§5) so calm-stock barriers stay above the
+    trading-cost/noise floor rather than measuring sub-cost wiggles."""
     d = df5.reset_index(drop=True)
-    a = atr(d, atr_period)
+    a = atr(d, atr_period).clip(lower=min_barrier_pct / 100.0 * d["close"])
     locked = locked_bar_mask(d)
     times = pd.DatetimeIndex(d["ts"])
     dates = times.date
