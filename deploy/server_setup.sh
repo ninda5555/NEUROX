@@ -17,7 +17,7 @@
 set -euo pipefail
 
 REPO_URL="${NEUROX_REPO_URL:-https://github.com/ninda5555/NEUROX.git}"
-BRANCH="${NEUROX_BRANCH:-claude/nse-trading-assistant-setup-hly9x3}"
+BRANCH="${NEUROX_BRANCH:-main}"
 APP_DIR="/opt/neurox"
 SERVICE_USER="${NEUROX_USER:-neurox}"
 

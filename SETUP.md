@@ -89,8 +89,7 @@ doesn't do. Note the server's IP and your SSH login.
 
 ```bash
 # 1. One-time base install (as root):
-git clone -b claude/nse-trading-assistant-setup-hly9x3 \
-  https://github.com/ninda5555/NEUROX.git /opt/neurox
+git clone https://github.com/ninda5555/NEUROX.git /opt/neurox
 sudo /opt/neurox/deploy/server_setup.sh
 
 # 2. Fill in your Fyers keys:
