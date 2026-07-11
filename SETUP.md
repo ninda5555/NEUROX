@@ -69,8 +69,6 @@ git clone https://github.com/ninda5555/neurox.git && cd neurox
 
 ---
 
----
-
 ## Run on a cloud server (always-on, phone access)
 
 Instead of your own laptop, run NEUROX on a small always-on Ubuntu server so
@@ -80,27 +78,30 @@ private network — no home Wi-Fi needed, works fine on 5G.
 **You do the server part** (Claude Code can't create or pay for a server for
 you): spin up any **Ubuntu 22.04** VPS with **≥ 4 GB RAM** (2 GB or the
 cheapest "nano" tiers fail during retraining) — AWS Lightsail Mumbai,
-Hetzner, Hostinger, DigitalOcean, whichever your payment method covers.
-Region doesn't matter for a predictions-only tool; you don't need India's
-special static-IP tier — that rule is about *order placement*, which V1
-doesn't do. Note the server's IP and your SSH login.
+Hetzner, Hostinger, DigitalOcean, Oracle Cloud's free-tier Ampere A1
+(arm64/aarch64 — works fine, `server_setup.sh` installs the extra build
+tools that need), whichever your payment method covers. Region doesn't
+matter for a predictions-only tool; you don't need India's special
+static-IP tier — that rule is about *order placement*, which V1 doesn't do.
+Note the server's IP and your SSH login (e.g. `ssh ubuntu@<server-ip>`).
 
-**Then, on the server:**
+**Then, on the server (as the `ubuntu` user, or whatever your image's default
+login is):**
 
 ```bash
-# 1. One-time base install (as root):
-git clone https://github.com/ninda5555/NEUROX.git /opt/neurox
-sudo /opt/neurox/deploy/server_setup.sh
+# 1. One-time base install (as root — needs sudo):
+git clone https://github.com/ninda5555/NEUROX.git ~/NEUROX
+sudo ~/NEUROX/deploy/server_setup.sh
 
 # 2. Fill in your Fyers keys:
-sudo -u neurox nano /opt/neurox/config.yaml
+nano ~/NEUROX/config.yaml
 
 # 3. Join your private network (prints a one-time login URL):
 tailscale up
 
 # 4. One-time history download + training (1-3 hrs, runs on the server's
 #    connection, not your phone data):
-sudo -u neurox bash -lc 'cd /opt/neurox && source .venv/bin/activate && ./bootstrap.sh'
+cd ~/NEUROX && source .venv/bin/activate && ./bootstrap.sh
 
 # 5. Start the services — they now run forever, restart on crash/reboot,
 #    and self-retrain on schedule with zero further action from you:
@@ -109,6 +110,10 @@ sudo systemctl start neurox-dashboard neurox-scheduler
 # 6. Put the dashboard on your private network only (never public):
 tailscale serve --bg http://127.0.0.1:8000
 ```
+
+(Ran as a different user, or want the old dedicated-service-account layout
+back? `NEUROX_USER=neurox NEUROX_APP_DIR=/opt/neurox sudo -E ./deploy/server_setup.sh`
+— both are overridable.)
 
 **On your phone:** install the Tailscale app, sign into the *same* Tailscale
 account, then open the URL `tailscale serve status` printed on the server

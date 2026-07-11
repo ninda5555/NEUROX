@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # NEUROX cloud deployment — idempotent setup for a fresh Ubuntu 22.04 VPS.
+# Works on amd64 and arm64/aarch64 (e.g. Oracle Cloud Ampere A1) — the extra
+# build packages below exist so lightgbm/shap/duckdb/polars/pyarrow build
+# cleanly on aarch64 even when a matching prebuilt wheel isn't on PyPI yet.
 # Run as root:  curl -fsSL .../server_setup.sh | bash   OR   sudo ./server_setup.sh
 #
 # What it does:
-#   1. Installs Python 3.11+, git, build deps, ufw, curl.
-#   2. Clones/updates the repo at /opt/neurox.
+#   1. Installs Python 3.11+, git, build deps (incl. aarch64 source-build
+#      deps), ufw, curl.
+#   2. Clones/updates the repo at $APP_DIR (default /home/ubuntu/NEUROX).
 #   3. Creates the venv, installs requirements.txt.
 #   4. Copies config.example.yaml -> config.yaml if missing (never overwrites).
 #   5. Installs Tailscale (private, no public exposure — CLAUDE.md's static-IP
@@ -13,22 +17,31 @@
 #   7. Applies the firewall (deny public 8000, allow SSH).
 #
 # Safe to re-run: every step checks before acting.
+#
+# Override defaults with env vars if needed, e.g.:
+#   NEUROX_USER=neurox NEUROX_APP_DIR=/opt/neurox ./server_setup.sh
 
 set -euo pipefail
 
 REPO_URL="${NEUROX_REPO_URL:-https://github.com/ninda5555/NEUROX.git}"
 BRANCH="${NEUROX_BRANCH:-main}"
-APP_DIR="/opt/neurox"
-SERVICE_USER="${NEUROX_USER:-neurox}"
+SERVICE_USER="${NEUROX_USER:-ubuntu}"
+APP_DIR="${NEUROX_APP_DIR:-/home/$SERVICE_USER/NEUROX}"
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "Run this as root (sudo ./server_setup.sh)." >&2
   exit 1
 fi
 
-echo "==> [1/7] System packages"
+echo "==> [1/7] System packages ($(uname -m))"
 apt-get update -qq
+# build-essential + cmake + libomp/libgomp: lightgbm compiles a C++
+# extension with OpenMP on Linux; on aarch64 there's often no prebuilt
+# wheel, so this covers a source build. libssl/libffi/pkg-config cover
+# any other package (e.g. cryptography, brought in transitively) that
+# needs to compile from source on arm64. python3.11-dev provides headers.
 apt-get install -y -qq software-properties-common curl git ufw build-essential \
+  cmake libomp-dev libgomp1 libssl-dev libffi-dev pkg-config \
   python3.11 python3.11-venv python3.11-dev >/dev/null
 
 echo "==> [2/7] Service account"
@@ -72,9 +85,15 @@ fi
 echo "==> [7/7] systemd services + firewall"
 cp "$APP_DIR/deploy/systemd/neurox-dashboard.service" /etc/systemd/system/
 cp "$APP_DIR/deploy/systemd/neurox-scheduler.service" /etc/systemd/system/
-# Services run as SERVICE_USER, not root.
-sed -i "s/^User=.*/User=$SERVICE_USER/" /etc/systemd/system/neurox-dashboard.service
-sed -i "s/^User=.*/User=$SERVICE_USER/" /etc/systemd/system/neurox-scheduler.service
+# Unit files ship with the /home/ubuntu/NEUROX defaults; rewrite them if
+# NEUROX_USER / NEUROX_APP_DIR overrode that (e.g. the old /opt/neurox
+# layout with a dedicated service account).
+for unit in neurox-dashboard.service neurox-scheduler.service; do
+  f="/etc/systemd/system/$unit"
+  sed -i "s|^User=.*|User=$SERVICE_USER|" "$f"
+  sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$APP_DIR|" "$f"
+  sed -i "s|^ExecStart=/home/ubuntu/NEUROX/|ExecStart=$APP_DIR/|" "$f"
+done
 systemctl daemon-reload
 systemctl enable neurox-dashboard.service neurox-scheduler.service
 

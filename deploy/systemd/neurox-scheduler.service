@@ -5,10 +5,10 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=neurox
-WorkingDirectory=/opt/neurox
+User=ubuntu
+WorkingDirectory=/home/ubuntu/NEUROX
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/opt/neurox/.venv/bin/python -m src.jobs.scheduler
+ExecStart=/home/ubuntu/NEUROX/.venv/bin/python -m src.jobs.scheduler
 Restart=always
 RestartSec=10
 

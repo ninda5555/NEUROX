@@ -5,12 +5,12 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=neurox
-WorkingDirectory=/opt/neurox
+User=ubuntu
+WorkingDirectory=/home/ubuntu/NEUROX
 Environment=PYTHONUNBUFFERED=1
 # 127.0.0.1 only — never 0.0.0.0. Reached over Tailscale's virtual interface,
 # never exposed to the public internet (see deploy/firewall.sh).
-ExecStart=/opt/neurox/.venv/bin/uvicorn src.api.app:app --host 127.0.0.1 --port 8000
+ExecStart=/home/ubuntu/NEUROX/.venv/bin/uvicorn src.api.app:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=5
 
