@@ -2,8 +2,10 @@
 config.yaml
 .tokens/
 
-# Data & model artifacts (regenerable, large)
-data/
+# Data & model artifacts (regenerable, large) — anchored to repo root only;
+# unanchored "data/" previously also matched src/data/ (the CandleStore
+# package) and silently excluded it from every commit (found 12-Jul-2026).
+/data/
 /models/
 
 # Python
