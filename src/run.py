@@ -31,6 +31,18 @@ def ensure_token(cfg) -> str:
         return auth.get_valid_token(cfg)
     except auth.NeedsReauth:
         pass
+    if cfg["fyers.auto_login"]:
+        # Unattended path (deploy/, opt-in): try the headless TOTP+PIN flow
+        # before ever falling to input() below, which would hang forever
+        # with no stdin (e.g. bootstrap.sh run right after server_setup.sh,
+        # before the scheduler's 06:00 IST job has logged in for the day).
+        try:
+            print("\nauto_login is on — attempting headless daily re-auth…")
+            token = auth.headless_login(cfg)
+            print("✓ Logged in headlessly. Token valid until ~6 AM tomorrow.\n")
+            return token
+        except Exception as e:
+            print(f"Headless login failed ({e}); falling back to manual login.\n")
     print("\n" + "=" * 64)
     print("  DAILY LOGIN (takes ~1 minute — required every morning by SEBI)")
     print("=" * 64)

@@ -68,7 +68,15 @@ def set_active(conn: sqlite3.Connection, model_id: str) -> None:
 
 def load_active(conn: sqlite3.Connection, mode: str):
     """Returns (model_id, booster, calibrator, feature_list) for the active
-    model of a mode."""
+    model of a mode.
+
+    Security note: the .pkl here is unpickled, which is unsafe for untrusted
+    input in general. It's safe in this codebase specifically because the
+    path always comes from `artifact_path` on a DB row that only
+    save_model() ever writes (the trusted training pipeline) — never from
+    request/user input. Do not add an API endpoint or CLI flag that lets a
+    caller choose an arbitrary artifact_path/model_id to load without
+    re-checking this."""
     import lightgbm as lgb
     row = conn.execute("SELECT * FROM models WHERE mode=? AND is_active=1",
                        (mode,)).fetchone()

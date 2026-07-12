@@ -93,3 +93,40 @@ def test_scheduler_job_invokes_headless_login_when_on(tmp_path, monkeypatch):
                         lambda cfg: calls.append(cfg) or "tok")
     job_daily_auto_login()
     assert len(calls) == 1
+
+
+# ---------- ensure_token: bootstrap/src.run must not hang unattended ----------
+
+def test_ensure_token_uses_headless_login_when_auto_login_on(tmp_path, monkeypatch):
+    """bootstrap.sh calls this via src.run.ensure_token; with auto_login on it
+    must never reach input() — that would hang forever with no stdin."""
+    import src.run as run_mod
+
+    cfg = _cfg(tmp_path, auto_login=True)
+    monkeypatch.setattr(run_mod.auth, "get_valid_token",
+                        lambda c: (_ for _ in ()).throw(run_mod.auth.NeedsReauth()))
+    monkeypatch.setattr(run_mod.auth, "headless_login", lambda c: "headless-tok")
+
+    def _boom(*a, **k):
+        raise AssertionError("must not prompt interactively when auto_login is on")
+    monkeypatch.setattr("builtins.input", _boom)
+
+    assert run_mod.ensure_token(cfg) == "headless-tok"
+
+
+def test_ensure_token_falls_back_to_manual_if_headless_fails(tmp_path, monkeypatch):
+    import src.run as run_mod
+
+    cfg = _cfg(tmp_path, auto_login=True)
+    monkeypatch.setattr(run_mod.auth, "get_valid_token",
+                        lambda c: (_ for _ in ()).throw(run_mod.auth.NeedsReauth()))
+    monkeypatch.setattr(run_mod.auth, "headless_login",
+                        lambda c: (_ for _ in ()).throw(auto_login.AutoLoginError("verify_pin", "bad pin")))
+    monkeypatch.setattr(run_mod.auth, "login_url", lambda c: "https://example.invalid/login")
+    monkeypatch.setattr(run_mod.auth, "current_totp", lambda c: None)
+    monkeypatch.setattr(run_mod, "webbrowser", type("W", (), {"open": staticmethod(lambda u: None)}))
+    monkeypatch.setattr("builtins.input", lambda prompt="": "https://127.0.0.1/?auth_code=AC-1")
+    monkeypatch.setattr(run_mod.auth, "exchange_auth_code", lambda c, code: "manual-tok")
+    monkeypatch.setattr(run_mod.auth, "save_token", lambda c, tok: None)
+
+    assert run_mod.ensure_token(cfg) == "manual-tok"

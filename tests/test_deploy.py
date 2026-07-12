@@ -16,7 +16,7 @@ DEPLOY = Path(__file__).resolve().parents[1] / "deploy"
 
 
 def test_deploy_artifacts_exist():
-    for rel in ("server_setup.sh", "firewall.sh",
+    for rel in ("server_setup.sh", "oneshot.sh", "firewall.sh",
                "systemd/neurox-dashboard.service",
                "systemd/neurox-scheduler.service"):
         assert (DEPLOY / rel).exists(), f"missing deploy/{rel}"
@@ -55,3 +55,38 @@ def test_firewall_denies_dashboard_port_publicly():
     text = (DEPLOY / "firewall.sh").read_text()
     assert "deny 8000" in text
     assert "allow OpenSSH" in text or "allow ssh" in text.lower()
+
+
+def test_server_setup_is_idempotent_and_logs():
+    text = (DEPLOY / "server_setup.sh").read_text()
+    assert "set -euo pipefail" in text
+    assert "LOG_FILE" in text and "tee -a" in text
+    # every apt/useradd/venv/config.yaml/systemd step guards before acting,
+    # rather than assuming a clean-slate box
+    assert re.search(r"if\s*\[\s*!\s*-f\s*\"\$APP_DIR/config\.yaml\"", text)
+    assert re.search(r"if\s*!\s*id -u", text)
+
+
+def test_server_setup_has_arm_build_deps():
+    text = (DEPLOY / "server_setup.sh").read_text()
+    for pkg in ("cmake", "ninja-build", "libomp-dev", "libgomp1", "gfortran",
+               "libopenblas-dev", "python3.11-dev"):
+        assert pkg in text, f"missing aarch64 build dep: {pkg}"
+
+
+def test_server_setup_self_checks_both_services():
+    text = (DEPLOY / "server_setup.sh").read_text()
+    assert "systemctl" in text and "is-active" in text
+    assert "neurox-dashboard" in text and "neurox-scheduler" in text
+    assert "curl" in text and "127.0.0.1:8000" in text
+    assert "SELF-CHECK" in text
+
+
+def test_oneshot_delegates_to_server_setup_without_duplicating_it():
+    text = (DEPLOY / "oneshot.sh").read_text()
+    assert "server_setup.sh" in text
+    assert "set -euo pipefail" in text
+    # oneshot's job is fetch-then-delegate, not re-implementing the install —
+    # it should not itself touch systemd/apt install of the app's deps
+    assert "systemctl enable" not in text
+    assert "requirements.txt" not in text
