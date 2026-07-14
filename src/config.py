@@ -41,7 +41,11 @@ DEFAULTS: dict[str, Any] = {
     },
     "backfill": {"daily_days": 730, "fivemin_days": 120},
     "labels": {"min_barrier_atr_pct": 0.30},
-    "training": {"retrain_schedule": "weekly"},  # "weekly" (Sat 10:00) | "daily" (~16:45 IST, Mon-Fri)
+    "training": {
+        "retrain_schedule": "weekly",  # "weekly" (Sat 10:00) | "daily" (~16:45 IST, Mon-Fri)
+        "time_decay_half_life_days": 0,     # T9: >0 halves sample weight per N days of age (0 = off)
+        "swing_uniqueness_weights": False,  # T9: 1/overlap weights for swing labels (off)
+    },
     "observability": {
         "score_log": True,          # parquet log of ALL scored candidates (T6)
         "psi_window_days": 5,       # live window compared against training (T7)

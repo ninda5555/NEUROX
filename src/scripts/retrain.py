@@ -39,7 +39,42 @@ def load_mode_frame(features_root: Path, mode: str) -> pd.DataFrame:
     return df
 
 
-def prepare(mode: str, df: pd.DataFrame) -> tuple[pd.DataFrame, list[str], str]:
+SWING_HORIZON_SESSIONS = 10  # §5: swing labels walk 10 sessions of barriers
+
+
+def _apply_time_decay(out: pd.DataFrame, half_life_days: float) -> None:
+    """T9 (off by default): halve a sample's weight every half_life_days of
+    age so the model leans toward current market behaviour. Multiplies into
+    _w (creating it at 1.0) so it composes with uniqueness weights."""
+    ts = pd.DatetimeIndex(out["ts"])
+    age_days = (ts.max() - ts).days.astype(float)
+    decay = np.power(0.5, age_days / half_life_days)
+    out["_w"] = out.get("_w", pd.Series(1.0, index=out.index)) * decay
+
+
+def _swing_uniqueness(out: pd.DataFrame) -> pd.Series:
+    """T9 (off by default): overlapping swing labels are serially dependent —
+    a 10-session barrier walk starting today shares most of its path with
+    one starting tomorrow. Weight each row by 1/(number of same-symbol rows
+    whose label windows overlap it). Positional approximation: labeled daily
+    rows are ~one per session, so overlap count for row i in a symbol group
+    of n rows is min(i,h) + min(n-1-i,h) + 1 with h = the label horizon."""
+    h = SWING_HORIZON_SESSIONS
+
+    def per_symbol(g: pd.Series) -> pd.Series:
+        n = len(g)
+        i = np.arange(n, dtype=float)
+        concurrent = np.minimum(i, h) + np.minimum(n - 1 - i, h) + 1
+        return pd.Series(1.0 / concurrent, index=g.index)
+
+    ordered = out.sort_values("ts")
+    w = ordered.groupby("symbol", sort=False)["label"].transform(
+        lambda g: per_symbol(g))
+    return w.reindex(out.index)
+
+
+def prepare(mode: str, df: pd.DataFrame, *, half_life_days: float = 0.0,
+            swing_uniqueness: bool = False) -> tuple[pd.DataFrame, list[str], str]:
     if mode == "INTRADAY":
         base = intraday_mod.FEATURE_COLS + REGIME_COLS
         longs = df[df["label_long"].notna()].copy()
@@ -51,10 +86,16 @@ def prepare(mode: str, df: pd.DataFrame) -> tuple[pd.DataFrame, list[str], str]:
         # symbol are serially dependent; weight each row by 1/N(symbol, day)
         day = pd.DatetimeIndex(out["ts"]).strftime("%Y-%m-%d")
         out["_w"] = 1.0 / out.groupby([out["symbol"], day])["label"].transform("size")
+        if half_life_days > 0:
+            _apply_time_decay(out, half_life_days)
         return out, base + ["direction"], "label"
     base = swing_mod.FEATURE_COLS + REGIME_COLS
     out = df[df["label_long"].notna()].copy()
     out["label"] = out["label_long"]
+    if swing_uniqueness:
+        out["_w"] = _swing_uniqueness(out)
+    if half_life_days > 0:
+        _apply_time_decay(out, half_life_days)
     return out, base, "label"
 
 
@@ -81,7 +122,10 @@ def main(argv: list[str] | None = None) -> int:
     for mode in (["INTRADAY", "SWING"] if args.mode == "both" else [args.mode]):
         print(f"\n=== {mode}: loading features ===")
         df = load_mode_frame(cfg.path("paths.features"), mode)
-        frame, feature_cols, label_col = prepare(mode, df)
+        frame, feature_cols, label_col = prepare(
+            mode, df,
+            half_life_days=cfg["training.time_decay_half_life_days"],
+            swing_uniqueness=cfg["training.swing_uniqueness_weights"])
         print(f"{len(frame):,} labeled tradable rows | positive rate "
               f"{frame[label_col].mean():.3f}")
 

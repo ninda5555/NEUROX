@@ -44,6 +44,10 @@ labels:                   # CLAUDE.md §5
 training:                 # CLAUDE.md §6.2, deploy/ scheduler
   retrain_schedule: "weekly"  # "weekly" (Sat 10:00 IST, default) or "daily"
                                # (~16:45 IST Mon-Fri, after the candle top-up)
+  time_decay_half_life_days: 0   # T9, OFF: >0 halves a training sample's
+                                  # weight per N days of age (e.g. 60)
+  swing_uniqueness_weights: false  # T9, OFF: down-weight overlapping swing
+                                    # labels (1/overlap, Lopez de Prado)
 
 observability:
   score_log: true         # log EVERY scored candidate (not just emitted
