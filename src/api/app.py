@@ -62,6 +62,12 @@ def status():
     tracker = DayRiskTracker(c, cfg["risk.capital"],
                              cfg["risk.daily_loss_limit_pct"],
                              cfg["risk.loss_limit_warn_frac"])
+    drift = {}
+    for mode in ("INTRADAY", "SWING"):
+        outcome = dbm.get_state(c, f"drift_{mode}")
+        psi = dbm.get_state(c, f"psi_{mode}")
+        drift[mode] = {"outcome": json.loads(outcome) if outcome else None,
+                       "psi": json.loads(psi) if psi else None}
     return {
         "now_ist": now_ist().isoformat(timespec="seconds"),
         "token": tok,
@@ -71,6 +77,7 @@ def status():
                          "stale": bool(surv_err) or surv_date != (snap or surv_date)},
         "regime": dict(regime) if regime else None,
         "loss_limit": tracker.status(),
+        "drift": drift,
         "disclosure": DISCLOSURE,
         "mode_thresholds": {"confidence": cfg["signals.confidence_threshold"]},
     }

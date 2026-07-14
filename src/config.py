@@ -42,7 +42,11 @@ DEFAULTS: dict[str, Any] = {
     "backfill": {"daily_days": 730, "fivemin_days": 120},
     "labels": {"min_barrier_atr_pct": 0.30},
     "training": {"retrain_schedule": "weekly"},  # "weekly" (Sat 10:00) | "daily" (~16:45 IST, Mon-Fri)
-    "observability": {"score_log": True},  # parquet log of ALL scored candidates (T6)
+    "observability": {
+        "score_log": True,          # parquet log of ALL scored candidates (T6)
+        "psi_window_days": 5,       # live window compared against training (T7)
+        "psi_flag_threshold": 0.25, # PSI above this => feature-drift red flag
+    },
     "signals": {"confidence_threshold": 0.60, "scanner_top_n": 12},
     "risk": {
         "capital": 1_000_000,

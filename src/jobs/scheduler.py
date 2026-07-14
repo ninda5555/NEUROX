@@ -25,6 +25,7 @@ from src.fyers import auth
 from src.fyers.client import FyersClient
 from src.journal.digest import drift_check, weekly_digest
 from src.journal.outcomes import evaluate_pending
+from src.models.drift import psi_check
 from src.journal.paper import settle_paper_trades
 from src.signals.livescan import swing_pass
 from src.timeutil import IST
@@ -100,6 +101,9 @@ def job_candle_topup():
         log.exception("sector refresh failed (existing sectors kept)")
     for mode in ("INTRADAY", "SWING"):
         drift_check(conn, mode)
+        psi_check(conn, cfg.path("paths.scores"), mode,
+                  window_days=cfg["observability.psi_window_days"],
+                  flag_threshold=cfg["observability.psi_flag_threshold"])
     log.info("top-up done; %d outcome rows refreshed", n)
 
 

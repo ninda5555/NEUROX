@@ -50,6 +50,8 @@ observability:
                            # signals) to data/scores/{mode}/{date}.parquet —
                            # feeds drift monitoring; ~a few MB/day. Kill
                            # switch only; scans never fail on a log error.
+  psi_window_days: 5      # live window compared against the training baseline
+  psi_flag_threshold: 0.25  # PSI above this => feature-drift red flag (T7)
 
 signals:                  # CLAUDE.md §6.3
   confidence_threshold: 0.60

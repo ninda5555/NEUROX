@@ -21,7 +21,7 @@ def save_model(conn: sqlite3.Connection, models_dir: Path, *, mode: str,
                booster, calibrator, feature_list: list[str], lgbm_params: dict,
                calibration_curve: list[list[float]], cv_report: dict,
                red_flags: list[dict], train_start: str, train_end: str,
-               activate: bool = True) -> str:
+               activate: bool = True, featstats: dict | None = None) -> str:
     model_id = new_model_id(mode)
     models_dir.mkdir(parents=True, exist_ok=True)
     txt = models_dir / f"{model_id}.txt"
@@ -31,6 +31,10 @@ def save_model(conn: sqlite3.Connection, models_dir: Path, *, mode: str,
     booster.save_model(str(txt))
     with open(pkl, "wb") as fh:
         pickle.dump({"calibrator": calibrator, "feature_list": feature_list}, fh)
+    if featstats:
+        # training-time feature distributions — the PSI drift baseline (T7)
+        (models_dir / f"{model_id}.featstats.json").write_text(
+            json.dumps(featstats))
 
     conn.execute(
         """INSERT INTO models (model_id, mode, trained_at, train_start, train_end,

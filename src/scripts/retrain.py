@@ -137,12 +137,14 @@ def main(argv: list[str] | None = None) -> int:
                                  "avg_r_multiple", "max_drawdown_pct")}
                                for r in results],
                      "ic_kept": kept}
+        from src.models.drift import compute_featstats
+        featstats = compute_featstats(frame, kept)
         model_id = save_model(
             conn, cfg.path("paths.models"), mode=mode, booster=booster,
             calibrator=iso, feature_list=kept, lgbm_params=LGBM_PARAMS,
             calibration_curve=curve, cv_report=cv_report, red_flags=flags,
             train_start=str(dates[0]), train_end=str(dates[-1]),
-            activate=False)
+            activate=False, featstats=featstats)
         print(f"registered {model_id} | {len(kept)} features | "
               f"calibration curve: {curve}")
 
