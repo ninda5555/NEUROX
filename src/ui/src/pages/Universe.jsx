@@ -40,22 +40,22 @@ export default function Universe() {
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3.5 mb-[18px]">
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-3.5 mb-[18px]">
         <div className="glass-card px-5 py-[18px]">
           <div className="text-[11.5px] text-dim mb-2">Series scanned</div>
-          <div className="font-mono text-[28px] font-semibold">{fmtIn(data.scanned)}</div>
+          <div className="font-mono text-[21px] sm:text-[28px] font-semibold">{fmtIn(data.scanned)}</div>
         </div>
         <div className="px-5 py-[18px] rounded-[14px]" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
           <div className="text-[11.5px] text-dim mb-2">Included</div>
-          <div className="font-mono text-[28px] font-semibold text-mint">{fmtIn(data.included)}</div>
+          <div className="font-mono text-[21px] sm:text-[28px] font-semibold text-mint">{fmtIn(data.included)}</div>
         </div>
         <div className="px-5 py-[18px] rounded-[14px]" style={{ background: 'rgba(244,63,94,0.05)', border: '1px solid rgba(244,63,94,0.18)' }}>
           <div className="text-[11.5px] text-dim mb-2">Excluded</div>
-          <div className="font-mono text-[28px] font-semibold text-rose">{fmtIn(data.scanned - data.included)}</div>
+          <div className="font-mono text-[21px] sm:text-[28px] font-semibold text-rose">{fmtIn(data.scanned - data.included)}</div>
         </div>
       </div>
 
-      <div className="grid gap-[18px] items-start" style={{ gridTemplateColumns: '300px 1fr' }}>
+      <div className="grid gap-[18px] items-start grid-cols-1 lg:grid-cols-[300px_1fr]">
         <div className="glass-soft px-5 py-[18px]">
           <div className="text-[13.5px] font-semibold mb-3.5">Why stocks are excluded</div>
           <div className="flex flex-col gap-3">

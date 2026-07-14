@@ -24,7 +24,7 @@ export default function Model({ mode }) {
         averages carry their spread and are never reported alone. Red flags are surfaced, never suppressed.
       </p>
 
-      <div className="grid gap-[18px] items-start" style={{ gridTemplateColumns: '340px 1fr' }}>
+      <div className="grid gap-[18px] items-start grid-cols-1 lg:grid-cols-[340px_1fr]">
         <div className="flex flex-col gap-[18px]">
           <div className="glass-card px-5 py-[18px]">
             <div className="text-[11px] uppercase tracking-[0.08em] text-dim mb-3">Active model</div>
@@ -122,7 +122,7 @@ export default function Model({ mode }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-[18px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-[18px]">
             <div className="glass-soft px-[18px] py-4">
               <div className="text-[13.5px] font-semibold mb-3">Feature IC</div>
               <div className="flex flex-col gap-[9px]">

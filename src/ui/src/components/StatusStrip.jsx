@@ -15,7 +15,7 @@ export default function StatusStrip({ status }) {
     : 'Regime: no data yet.'
 
   return (
-    <div className="mx-auto w-full px-7 pb-3.5 pt-3 flex items-center gap-2.5 flex-wrap">
+    <div className="mx-auto w-full px-4 md:px-7 pb-3.5 pt-3 flex items-center gap-2.5 flex-wrap">
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.07] text-xs text-soft">
         <span className="text-dim">Universe</span>
         <span className="font-mono text-ink font-medium">{fmtIn(uni?.included)}</span>
@@ -27,7 +27,7 @@ export default function StatusStrip({ status }) {
         {surv?.date && surv?.error ? <span className="text-rose text-[11px]">STALE</span> : null}
       </div>
 
-      <div className="flex-1 min-w-[260px] flex items-center gap-[9px] px-[13px] py-1.5 rounded-lg text-xs"
+      <div className="flex-1 min-w-full sm:min-w-[260px] flex items-center gap-[9px] px-[13px] py-1.5 rounded-lg text-xs"
            style={{ background: 'rgba(129,140,248,0.06)', border: '1px solid rgba(129,140,248,0.18)' }}>
         <span className="w-1.5 h-1.5 rounded-full bg-peri" />
         <span className="text-perilight">{regimeText}</span>

@@ -1,15 +1,16 @@
-const ICONS = {
+export const ICONS = {
   scanner: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
   search: 'M10 4a6 6 0 100 12 6 6 0 000-12zM20 20l-4.2-4.2',
   journal: 'M4 6h16M4 12h16M4 18h10',
   model: 'M3 12h4l3 7 4-15 3 8h4',
   universe: 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5',
 }
-const NAV = [['scanner', 'Scanner'], ['search', 'Search'], ['journal', 'Journal'], ['model', 'Model'], ['universe', 'Universe']]
+export const NAV = [['scanner', 'Scanner'], ['search', 'Search'], ['journal', 'Journal'], ['model', 'Model'], ['universe', 'Universe']]
 
+// Desktop/tablet side rail. On phones it is replaced by MobileNav (bottom bar).
 export default function Rail({ page, setPage }) {
   return (
-    <aside className="w-[82px] shrink-0 flex flex-col items-center py-[22px] gap-1 border-r border-white/[0.06]"
+    <aside className="hidden md:flex w-[82px] shrink-0 flex-col items-center py-[22px] gap-1 border-r border-white/[0.06]"
            style={{ background: 'rgba(255,255,255,0.015)' }}>
       <div className="w-[42px] h-[42px] rounded-[13px] flex items-center justify-center font-mono font-bold text-lg text-white mb-[18px]"
            style={{ background: 'linear-gradient(150deg, #A78BFA, #7C3AED)', boxShadow: '0 8px 24px rgba(139,92,246,0.45)' }}>N</div>

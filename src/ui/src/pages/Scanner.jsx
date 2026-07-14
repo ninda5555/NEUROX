@@ -127,8 +127,8 @@ export default function Scanner({ mode }) {
   const cards = data?.cards || []
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-1">
-        <h1 className="m-0 text-[22px] font-semibold tracking-[-0.02em]">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 mb-1">
+        <h1 className="m-0 text-[20px] md:text-[22px] font-semibold tracking-[-0.02em]">
           {mode === 'INTRADAY' ? 'Intraday setups' : 'Swing setups'}
         </h1>
         <span className="text-[13px] text-dim">
@@ -148,7 +148,7 @@ export default function Scanner({ mode }) {
           <div className="text-[13px] text-dim max-w-[440px] mx-auto leading-relaxed">{data?.empty_reason || 'Loading…'}</div>
         </div>
       ) : (
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))' }}>
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 400px), 1fr))' }}>
           {cards.map((c) => <Card key={c.signal_id} c={c} />)}
         </div>
       )}

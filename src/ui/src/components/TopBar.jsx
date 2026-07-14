@@ -3,15 +3,15 @@ export default function TopBar({ mode, setMode, status }) {
   return (
     <header className="sticky top-0 z-40 backdrop-blur-[14px] border-b border-white/[0.07]"
             style={{ background: 'rgba(12,16,26,0.72)' }}>
-      <div className="mx-auto px-7 pt-4 pb-3 flex items-center gap-6">
-        <div className="flex items-center gap-3 min-w-[220px] leading-[1.2]">
+      <div className="mx-auto px-4 md:px-7 pt-3 md:pt-4 pb-3 flex flex-wrap items-center gap-x-4 gap-y-2.5">
+        <div className="flex items-center gap-3 min-w-0 md:min-w-[220px] leading-[1.2]">
           <div>
-            <div className="text-[16px] font-semibold tracking-[-0.01em]">NSE Trading Assistant</div>
+            <div className="text-[15px] md:text-[16px] font-semibold tracking-[-0.01em]">NSE Trading Assistant</div>
             <div className="text-[11px] text-dim font-normal">Signals &amp; paper trading · V1</div>
           </div>
         </div>
 
-        <div className="flex-1 flex justify-center">
+        <div className="order-last w-full md:order-none md:w-auto flex-1 flex justify-center md:justify-center">
           <div className="inline-flex p-1 bg-white/[0.04] border border-white/[0.08] rounded-xl">
             {['INTRADAY', 'SWING'].map((m) => {
               const active = mode === m
@@ -28,7 +28,7 @@ export default function TopBar({ mode, setMode, status }) {
           </div>
         </div>
 
-        <div className="min-w-[220px] flex justify-end gap-2.5 items-center">
+        <div className="ml-auto min-w-0 md:min-w-[220px] flex flex-wrap justify-end gap-2 md:gap-2.5 items-center">
           <div className="flex items-center gap-[7px] px-[11px] py-1.5 rounded-lg"
                style={{ background: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.26)' }}>
             <span className={`w-[7px] h-[7px] rounded-full ${status?.ws_feed === 'live' ? 'livepulse' : ''}`}
