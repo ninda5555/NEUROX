@@ -49,14 +49,25 @@ def sentence_for(feature: str, shap_value: float) -> str:
     return pos if shap_value >= 0 else neg
 
 
+def _shap_row(booster, X: pd.DataFrame) -> np.ndarray:
+    import shap as shap_lib
+    sv = shap_lib.TreeExplainer(booster).shap_values(X)
+    vals = sv[1] if isinstance(sv, list) else sv       # binary: class-1 column
+    return np.asarray(vals)[0]
+
+
 def top_contributors(booster, X_row: pd.DataFrame, feature_names: list[str],
                      k: int = 6) -> list[dict]:
-    """Top-k SHAP contributors for one row -> [{feature, value, shap, sentence}]."""
-    import shap as shap_lib
-    explainer = shap_lib.TreeExplainer(booster)
-    sv = explainer.shap_values(X_row[feature_names].astype(np.float32))
-    vals = sv[1] if isinstance(sv, list) else sv       # binary: class-1 column
-    row = np.asarray(vals)[0]
+    """Top-k SHAP contributors for one row -> [{feature, value, shap, sentence}].
+    For a bagged ensemble (T10) the attribution is the MEMBER MEAN — the
+    same aggregation as the score itself, so the explanation explains the
+    number the user actually sees."""
+    from src.models.ensemble import BaggedBooster
+    X = X_row[feature_names].astype(np.float32)
+    if isinstance(booster, BaggedBooster):
+        row = np.mean([_shap_row(m, X) for m in booster.members], axis=0)
+    else:
+        row = _shap_row(booster, X)
     order = np.argsort(-np.abs(row))[:k]
     out = []
     for rank, i in enumerate(order):

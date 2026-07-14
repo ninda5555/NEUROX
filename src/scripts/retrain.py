@@ -21,7 +21,8 @@ from src.features.build import REGIME_COLS
 from src.models import cv as cvmod
 from src.models.calibrate import (RegimeCalibrator, calibration_curve_points,
                                   fit_isotonic)
-from src.models.train import LGBM_PARAMS, train_fn_for_cv, train_lgbm
+from src.models.ensemble import train_ensemble
+from src.models.train import LGBM_PARAMS, train_fn_for_cv
 from src.models.registry import promote_if_better, save_model
 from src.timeutil import IST
 
@@ -152,14 +153,18 @@ def main(argv: list[str] | None = None) -> int:
             print("no red flags raised across folds")
 
         # final model: train on everything with a validation tail; isotonic on
-        # the CV's out-of-fold test predictions
-        print("\ntraining final model …")
+        # the CV's out-of-fold test predictions. CV validates the approach
+        # with single boosters (k× CV cost buys nothing); the FINAL model is
+        # the ensemble when training.ensemble_size > 1 (T10, default 1=off).
+        n_members = cfg["training.ensemble_size"]
+        print(f"\ntraining final model ({n_members} member(s)) …")
         kept = cvmod.select_features(frame, feature_cols, label_col, mode)
         dates = np.array(sorted(pd.DatetimeIndex(frame["ts"]).date))
         val_from = dates[int(len(dates) * 0.9)]
         dcol = pd.DatetimeIndex(frame["ts"]).date
         tr, va = frame[dcol < val_from], frame[dcol >= val_from]
-        booster, _ = train_lgbm(tr, tr[label_col], va, va[label_col], kept)
+        booster = train_ensemble(tr, tr[label_col], va, va[label_col], kept,
+                                 n_members=n_members)
 
         oof_pred = np.concatenate([r.test_pred_raw for r in results])
         oof_y = np.concatenate([r.test_label for r in results])
@@ -185,7 +190,8 @@ def main(argv: list[str] | None = None) -> int:
         featstats = compute_featstats(frame, kept)
         model_id = save_model(
             conn, cfg.path("paths.models"), mode=mode, booster=booster,
-            calibrator=iso, feature_list=kept, lgbm_params=LGBM_PARAMS,
+            calibrator=iso, feature_list=kept,
+            lgbm_params={**LGBM_PARAMS, "ensemble_size": n_members},
             calibration_curve=curve, cv_report=cv_report, red_flags=flags,
             train_start=str(dates[0]), train_end=str(dates[-1]),
             activate=False, featstats=featstats)

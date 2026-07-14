@@ -26,8 +26,9 @@ EARLY_STOP = 50
 
 
 def train_lgbm(X_tr: pd.DataFrame, y_tr, X_val: pd.DataFrame, y_val,
-               feature_names: list[str]):
-    """Returns (booster, predict_fn). predict_fn(X)->raw probability."""
+               feature_names: list[str], params: dict | None = None):
+    """Returns (booster, predict_fn). predict_fn(X)->raw probability.
+    `params` overrides LGBM_PARAMS (ensemble members vary only seeds)."""
     import lightgbm as lgb
 
     w_tr = X_tr["_w"].to_numpy() if "_w" in X_tr.columns else None
@@ -37,7 +38,7 @@ def train_lgbm(X_tr: pd.DataFrame, y_tr, X_val: pd.DataFrame, y_val,
     dva = lgb.Dataset(X_val[feature_names].astype(np.float32),
                       label=np.asarray(y_val, dtype=np.float32), weight=w_va,
                       reference=dtr)
-    booster = lgb.train(LGBM_PARAMS, dtr, num_boost_round=NUM_ROUNDS,
+    booster = lgb.train(params or LGBM_PARAMS, dtr, num_boost_round=NUM_ROUNDS,
                         valid_sets=[dva],
                         callbacks=[lgb.early_stopping(EARLY_STOP, verbose=False)])
 

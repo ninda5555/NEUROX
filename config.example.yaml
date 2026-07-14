@@ -48,6 +48,9 @@ training:                 # CLAUDE.md §6.2, deploy/ scheduler
                                   # weight per N days of age (e.g. 60)
   swing_uniqueness_weights: false  # T9, OFF: down-weight overlapping swing
                                     # labels (1/overlap, Lopez de Prado)
+  ensemble_size: 1        # T10, OFF at 1: >1 trains seed-bagged members;
+                           # score = member mean, member spread logged as
+                           # model-uncertainty (retrain time scales ~linearly)
 
 observability:
   score_log: true         # log EVERY scored candidate (not just emitted

@@ -22,15 +22,21 @@ def save_model(conn: sqlite3.Connection, models_dir: Path, *, mode: str,
                calibration_curve: list[list[float]], cv_report: dict,
                red_flags: list[dict], train_start: str, train_end: str,
                activate: bool = True, featstats: dict | None = None) -> str:
+    from src.models.ensemble import BaggedBooster, calibrator_to_json
     model_id = new_model_id(mode)
     models_dir.mkdir(parents=True, exist_ok=True)
     txt = models_dir / f"{model_id}.txt"
-    pkl = models_dir / f"{model_id}.pkl"
-    if txt.exists() or pkl.exists():
+    if txt.exists():
         raise RuntimeError(f"artifact collision for {model_id} — never overwrite")
-    booster.save_model(str(txt))
-    with open(pkl, "wb") as fh:
-        pickle.dump({"calibrator": calibrator, "feature_list": feature_list}, fh)
+    members = booster.members if isinstance(booster, BaggedBooster) else [booster]
+    members[0].save_model(str(txt))          # member 0 = the classic artifact
+    for i, m in enumerate(members[1:], start=1):
+        m.save_model(str(models_dir / f"{model_id}.m{i}.txt"))
+    # calibrator as JSON (T10): new artifacts carry no pickle at all —
+    # load_active keeps a .pkl fallback for models trained before this.
+    (models_dir / f"{model_id}.calib.json").write_text(json.dumps(
+        {"calibrator": calibrator_to_json(calibrator),
+         "feature_list": feature_list, "n_members": len(members)}))
     if featstats:
         # training-time feature distributions — the PSI drift baseline (T7)
         (models_dir / f"{model_id}.featstats.json").write_text(
@@ -152,21 +158,36 @@ def promote_if_better(conn: sqlite3.Connection, model_id: str, *,
 
 def load_active(conn: sqlite3.Connection, mode: str):
     """Returns (model_id, booster, calibrator, feature_list) for the active
-    model of a mode.
+    model of a mode. booster is a BaggedBooster when member artifacts exist
+    ({model_id}.m1.txt …), else a plain Booster — the scan path duck-types.
 
-    Security note: the .pkl here is unpickled, which is unsafe for untrusted
-    input in general. It's safe in this codebase specifically because the
-    path always comes from `artifact_path` on a DB row that only
+    Models saved from T10 on carry a JSON calibrator ({model_id}.calib.json,
+    no pickle anywhere). The .pkl branch below exists only for artifacts
+    trained before that. Security note on that legacy branch: unpickling is
+    unsafe for untrusted input in general; it's safe here specifically
+    because the path always comes from `artifact_path` on a DB row that only
     save_model() ever writes (the trusted training pipeline) — never from
     request/user input. Do not add an API endpoint or CLI flag that lets a
     caller choose an arbitrary artifact_path/model_id to load without
     re-checking this."""
     import lightgbm as lgb
+    from src.models.ensemble import BaggedBooster, calibrator_from_json
     row = conn.execute("SELECT * FROM models WHERE mode=? AND is_active=1",
                        (mode,)).fetchone()
     if row is None:
         raise LookupError(f"no active model for {mode}")
-    booster = lgb.Booster(model_file=row["artifact_path"])
-    with open(Path(row["artifact_path"]).with_suffix(".pkl"), "rb") as fh:
+    artifact = Path(row["artifact_path"])
+    booster = lgb.Booster(model_file=str(artifact))
+    extras = sorted(artifact.parent.glob(f"{row['model_id']}.m*.txt"),
+                    key=lambda p: int(p.suffixes[-2][2:]))
+    if extras:
+        booster = BaggedBooster([booster] + [lgb.Booster(model_file=str(p))
+                                             for p in extras])
+    calib_json = artifact.with_suffix(".calib.json")
+    if calib_json.exists():
+        blob = json.loads(calib_json.read_text())
+        return (row["model_id"], booster,
+                calibrator_from_json(blob["calibrator"]), blob["feature_list"])
+    with open(artifact.with_suffix(".pkl"), "rb") as fh:   # pre-T10 artifacts
         blob = pickle.load(fh)
     return row["model_id"], booster, blob["calibrator"], blob["feature_list"]

@@ -45,6 +45,7 @@ DEFAULTS: dict[str, Any] = {
         "retrain_schedule": "weekly",  # "weekly" (Sat 10:00) | "daily" (~16:45 IST, Mon-Fri)
         "time_decay_half_life_days": 0,     # T9: >0 halves sample weight per N days of age (0 = off)
         "swing_uniqueness_weights": False,  # T9: 1/overlap weights for swing labels (off)
+        "ensemble_size": 1,                 # T10: >1 = seed-bagged members (1 = off)
     },
     "observability": {
         "score_log": True,          # parquet log of ALL scored candidates (T6)

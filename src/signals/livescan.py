@@ -103,14 +103,16 @@ def intraday_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
         best = None
         for d in (1, -1):
             fd = {**feat, "direction": float(d)}
-            X = pd.DataFrame([{f: fd.get(f, np.nan) for f in feats}])
-            raw_p = booster.predict(X.astype(np.float32))
+            X = pd.DataFrame([{f: fd.get(f, np.nan) for f in feats}]).astype(np.float32)
+            raw_p = booster.predict(X)
+            # ensemble member disagreement (T10) — NaN for a single model
+            spr = float(booster.spread(X)[0]) if hasattr(booster, "spread") else np.nan
             bkt = bucket_of(fd.get("regime_vix"), fd.get("regime_breadth"))
             p = float(cal.transform(raw_p, bkt)[0]) if isinstance(cal, RegimeCalibrator) \
                 else float(cal.transform(raw_p)[0])
             if best is None or p > best[0]:
-                best = (p, d, fd, float(raw_p[0]), bkt)
-        p, d, fd, raw, bkt = best
+                best = (p, d, fd, float(raw_p[0]), bkt, spr)
+        p, d, fd, raw, bkt, spr = best
         cands.append(Candidate(symbol=r["symbol"], mode="INTRADAY", direction=d,
                                confidence=p, price=r["price"], atr=r["atr"],
                                features=fd, orb_low=r["orb_low"],
@@ -118,7 +120,8 @@ def intraday_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
         score_rows.append({"ts": r["ts"], "symbol": r["symbol"],
                            "mode": "INTRADAY", "model_id": model_id,
                            "direction": d, "score_raw": raw, "confidence": p,
-                           "bucket": bkt, "emitted": 0, **fd})
+                           "bucket": bkt, "emitted": 0, "score_spread": spr,
+                           **fd})
 
     top = rank(cands, snapshot_turnover(conn), cfg["signals.scanner_top_n"])
     tracker = DayRiskTracker(conn, cfg["risk.capital"],
@@ -172,8 +175,9 @@ def swing_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
             continue
         feat = {**{c: (None if pd.isna(last[c]) else float(last[c]))
                    for c in swing_mod.FEATURE_COLS}, **regime_feats}
-        X = pd.DataFrame([{f2: feat.get(f2, np.nan) for f2 in feats}])
-        raw_p = booster.predict(X.astype(np.float32))
+        X = pd.DataFrame([{f2: feat.get(f2, np.nan) for f2 in feats}]).astype(np.float32)
+        raw_p = booster.predict(X)
+        spr = float(booster.spread(X)[0]) if hasattr(booster, "spread") else np.nan
         bkt = bucket_of(feat.get("regime_vix"), feat.get("regime_breadth"))
         p = float(cal.transform(raw_p, bkt)[0]) if isinstance(cal, RegimeCalibrator) \
             else float(cal.transform(raw_p)[0])
@@ -185,7 +189,8 @@ def swing_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
         score_rows.append({"ts": last["ts"].isoformat(), "symbol": sym,
                            "mode": "SWING", "model_id": model_id,
                            "direction": 1, "score_raw": float(raw_p[0]),
-                           "confidence": p, "bucket": bkt, "emitted": 0, **feat})
+                           "confidence": p, "bucket": bkt, "emitted": 0,
+                           "score_spread": spr, **feat})
     top = rank(cands, snapshot_turnover(conn), cfg["signals.scanner_top_n"])
     emitted = []
     for c in top:
