@@ -22,7 +22,7 @@ from src.models import cv as cvmod
 from src.models.calibrate import (RegimeCalibrator, calibration_curve_points,
                                   fit_isotonic)
 from src.models.train import LGBM_PARAMS, train_fn_for_cv, train_lgbm
-from src.models.registry import save_model
+from src.models.registry import promote_if_better, save_model
 from src.timeutil import IST
 
 
@@ -66,7 +66,11 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Train, validate, register models")
     ap.add_argument("--mode", choices=["INTRADAY", "SWING", "both"], default="both")
     ap.add_argument("--folds", type=int, default=6)
-    ap.add_argument("--no-activate", action="store_true")
+    ap.add_argument("--no-activate", action="store_true",
+                    help="register only; skip the promotion gate entirely")
+    ap.add_argument("--force-activate", action="store_true",
+                    help="activate even if the promotion gate says hold "
+                         "(the override is recorded on the model row)")
     args = ap.parse_args(argv)
 
     cfg = load_config()
@@ -138,9 +142,22 @@ def main(argv: list[str] | None = None) -> int:
             calibrator=iso, feature_list=kept, lgbm_params=LGBM_PARAMS,
             calibration_curve=curve, cv_report=cv_report, red_flags=flags,
             train_start=str(dates[0]), train_end=str(dates[-1]),
-            activate=not args.no_activate)
-        print(f"registered {model_id} (active={not args.no_activate}) | "
-              f"{len(kept)} features | calibration curve: {curve}")
+            activate=False)
+        print(f"registered {model_id} | {len(kept)} features | "
+              f"calibration curve: {curve}")
+
+        # Champion/challenger gate (§6.2): a retrained model no longer
+        # auto-activates — it must beat (or match, within tolerance) the
+        # current champion on its own CV report. Decision + reasons land on
+        # the model row and the Model page.
+        if args.no_activate:
+            print("promotion gate skipped (--no-activate); model registered only")
+        else:
+            d = promote_if_better(conn, model_id, force=args.force_activate)
+            print(f"promotion gate: {d['decision'].upper()}"
+                  + (f" (vs {d['compared_to']})" if d["compared_to"] else ""))
+            for r in d["reasons"]:
+                print(f"  - {r}")
     return 0
 
 

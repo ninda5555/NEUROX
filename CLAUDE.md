@@ -114,6 +114,7 @@ One mode enum threads through everything: `INTRADAY | SWING`. Signal logic is se
 - **Calibration:** isotonic regression fit on out-of-fold predictions. The UI only ever sees the calibrated probability. Show a calibration curve in the model page — if the model says 65% and reality is 52%, that curve is where the lie becomes visible.
 - **Explainability:** SHAP TreeExplainer. Every signal stores its top-6 SHAP contributors. Plain-English templating maps feature → sentence, e.g. `vwap_dist_atr: +0.21` → "Price is holding well above VWAP (strongest factor)".
 - **Retraining:** weekly (swing) / weekly on 100 days of 5-min data (intraday), scheduled job; every trained model is a new row in `models` with its full CV report. Old models are never overwritten.
+- **Promotion gate (champion/challenger, added 14-Jul-2026):** a retrained model never auto-activates. It is registered as a challenger and promoted only if its CV `precision_mean` is within 0.02 of the champion's and its `precision_std` within 0.05 (fresher data wins ties; materially worse never silently takes over an unattended box). The first model of a mode auto-promotes. The decision + every reason is stored in `models.promotion` (JSON) and shown on the Model page. CLI: `--no-activate` registers only; `--force-activate` overrides the gate and the override itself is recorded.
 
 ### 6.3 Signal emission
 A signal is emitted only when calibrated confidence ≥ mode threshold (config, default 0.60) AND risk engine approves (§7). Every emission writes the complete context to `signals` (§9) before it is shown anywhere. Scanner ranks by confidence × liquidity, surfaces top N (default 12), never dumps the universe.
@@ -184,7 +185,8 @@ CREATE TABLE models (
   cv_report  TEXT NOT NULL,          -- JSON: per-fold metrics + red flags
   red_flags  TEXT,                   -- JSON array, denormalized for UI
   artifact_path TEXT NOT NULL,       -- models/{model_id}.txt (lgbm) + .pkl (calibrator)
-  is_active  INTEGER DEFAULT 0       -- exactly one active per mode
+  is_active  INTEGER DEFAULT 0,      -- exactly one active per mode
+  promotion  TEXT                    -- JSON champion/challenger decision + reasons (§6.2)
 );
 CREATE TABLE cv_folds (
   model_id   TEXT NOT NULL REFERENCES models(model_id),

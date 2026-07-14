@@ -162,9 +162,16 @@ def model(mode: str = "INTRADAY"):
         return {"mode": mode, "active": None}
     folds = [dict(r) for r in c.execute(
         "SELECT * FROM cv_folds WHERE model_id=? ORDER BY fold", (m["model_id"],))]
-    history = [dict(r) for r in c.execute(
-        "SELECT model_id, trained_at, is_active, red_flags FROM models "
-        "WHERE mode=? ORDER BY trained_at DESC LIMIT 6", (mode,))]
+    history = []
+    for r in c.execute(
+            "SELECT model_id, trained_at, is_active, red_flags, promotion "
+            "FROM models WHERE mode=? ORDER BY trained_at DESC LIMIT 6", (mode,)):
+        h = dict(r)
+        h["promotion"] = json.loads(h["promotion"]) if h["promotion"] else None
+        history.append(h)
+    # the newest registration's champion/challenger decision, promoted or
+    # held — the Model page shows WHY, never just the outcome
+    latest_decision = history[0]["promotion"] if history else None
     ic = {}
     ic_files = sorted(Path(cfg.path("paths.features")).glob(f"ic_report_{mode}_*.json"))
     if ic_files:
@@ -183,7 +190,7 @@ def model(mode: str = "INTRADAY"):
             "folds": folds,
             "red_flags": json.loads(m["red_flags"] or "[]"),
             "calibration": json.loads(m["calibration"]),
-            "ic": ic, "history": history}
+            "ic": ic, "history": history, "latest_decision": latest_decision}
 
 
 @app.get("/api/universe")

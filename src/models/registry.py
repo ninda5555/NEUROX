@@ -66,6 +66,86 @@ def set_active(conn: sqlite3.Connection, model_id: str) -> None:
     conn.commit()
 
 
+# Promotion gate (champion/challenger, §6.2). A retrained model no longer
+# auto-activates: it must be at least as good as the current champion on its
+# own CV report. Tolerances exist because fresher training data has value —
+# a challenger within noise of the champion should win, one that is
+# materially worse should not silently take over an unattended deployment.
+PROMOTE_MEAN_TOLERANCE = 0.02   # challenger precision_mean >= champ - this
+PROMOTE_STD_TOLERANCE = 0.05    # challenger precision_std  <= champ + this
+
+
+def promotion_decision(conn: sqlite3.Connection, model_id: str) -> dict:
+    """Compare the challenger `model_id` against the active champion of the
+    same mode. Pure decision — activates nothing, writes nothing. Every
+    reason is recorded so the Model page can show WHY (§17.2 spirit: the
+    decision is displayed, never silent)."""
+    row = conn.execute("SELECT * FROM models WHERE model_id=?", (model_id,)).fetchone()
+    if row is None:
+        raise KeyError(model_id)
+    champ = conn.execute(
+        "SELECT * FROM models WHERE mode=? AND is_active=1 AND model_id != ?",
+        (row["mode"], model_id)).fetchone()
+    if champ is None:
+        return {"decision": "promoted", "compared_to": None,
+                "reasons": ["first model for this mode — no champion to beat"]}
+
+    new_r = json.loads(row["cv_report"])
+    old_r = json.loads(champ["cv_report"])
+    new_mean, old_mean = new_r.get("precision_mean"), old_r.get("precision_mean")
+    new_std, old_std = new_r.get("precision_std"), old_r.get("precision_std")
+
+    reasons, promote = [], True
+    if new_mean is None:
+        promote = False
+        reasons.append("challenger produced no signals in CV — nothing demonstrated")
+    elif old_mean is None:
+        reasons.append("champion had no CV signals; challenger does — promote")
+    else:
+        if new_mean >= old_mean - PROMOTE_MEAN_TOLERANCE:
+            reasons.append(f"precision mean {new_mean:.3f} vs champion "
+                           f"{old_mean:.3f} (tolerance {PROMOTE_MEAN_TOLERANCE}) — ok")
+        else:
+            promote = False
+            reasons.append(f"precision mean {new_mean:.3f} materially below "
+                           f"champion {old_mean:.3f} — hold")
+        if new_std is not None and old_std is not None:
+            if new_std <= old_std + PROMOTE_STD_TOLERANCE:
+                reasons.append(f"fold-to-fold std {new_std:.3f} vs champion "
+                               f"{old_std:.3f} — stability ok")
+            else:
+                promote = False
+                reasons.append(f"fold-to-fold std {new_std:.3f} materially above "
+                               f"champion {old_std:.3f} — less stable across time, hold")
+    n_flags_new = len(json.loads(row["red_flags"] or "[]"))
+    n_flags_old = len(json.loads(champ["red_flags"] or "[]"))
+    reasons.append(f"red flags: challenger {n_flags_new}, champion {n_flags_old} "
+                   "(reported, not gated — §17.2)")
+    return {"decision": "promoted" if promote else "held",
+            "compared_to": champ["model_id"], "reasons": reasons}
+
+
+def record_promotion(conn: sqlite3.Connection, model_id: str, decision: dict) -> None:
+    decision = {**decision, "decided_at": ist_iso(now_ist())}
+    conn.execute("UPDATE models SET promotion=? WHERE model_id=?",
+                 (json.dumps(decision), model_id))
+    conn.commit()
+
+
+def promote_if_better(conn: sqlite3.Connection, model_id: str, *,
+                      force: bool = False) -> dict:
+    """The gate: decide, record the decision on the challenger row, and
+    activate only on 'promoted' (or force=True, which is itself recorded)."""
+    decision = promotion_decision(conn, model_id)
+    if force and decision["decision"] != "promoted":
+        decision = {**decision, "decision": "promoted",
+                    "reasons": decision["reasons"] + ["FORCED by operator (--force-activate)"]}
+    record_promotion(conn, model_id, decision)
+    if decision["decision"] == "promoted":
+        set_active(conn, model_id)
+    return decision
+
+
 def load_active(conn: sqlite3.Connection, mode: str):
     """Returns (model_id, booster, calibrator, feature_list) for the active
     model of a mode.

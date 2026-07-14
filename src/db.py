@@ -48,7 +48,8 @@ CREATE TABLE IF NOT EXISTS models (
   cv_report  TEXT NOT NULL,          -- JSON: per-fold metrics + red flags
   red_flags  TEXT,                   -- JSON array, denormalized for UI
   artifact_path TEXT NOT NULL,       -- models/{model_id}.txt (lgbm) + .pkl (calibrator)
-  is_active  INTEGER DEFAULT 0       -- exactly one active per mode
+  is_active  INTEGER DEFAULT 0,      -- exactly one active per mode
+  promotion  TEXT                    -- JSON champion/challenger decision (§6.2)
 );
 CREATE TABLE IF NOT EXISTS cv_folds (
   model_id   TEXT NOT NULL REFERENCES models(model_id),
@@ -124,8 +125,21 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
     return conn
 
 
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Additive migrations for DBs created before a column existed.
+    CREATE TABLE IF NOT EXISTS never alters an existing table, so live
+    deployments (git pull + restart, never a teardown) pick up new columns
+    here. Additive-only: never drop, never rewrite rows."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(models)")}
+    if "promotion" not in cols:
+        # champion/challenger decision JSON: {decision, reasons, compared_to,
+        # decided_at} — why a retrained model was or wasn't activated (§6.2)
+        conn.execute("ALTER TABLE models ADD COLUMN promotion TEXT")
+
+
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    _migrate(conn)
     conn.commit()
 
 
