@@ -51,6 +51,10 @@ training:                 # CLAUDE.md §6.2, deploy/ scheduler
   ensemble_size: 1        # T10, OFF at 1: >1 trains seed-bagged members;
                            # score = member mean, member spread logged as
                            # model-uncertainty (retrain time scales ~linearly)
+  meta_labeling: false    # T11, OFF: second model scores whether the
+                           # primary's call pays (raw score + context);
+                           # calibration then runs on the meta's output.
+                           # Prior-fold OOF uplift reported in cv_report.meta
 
 observability:
   score_log: true         # log EVERY scored candidate (not just emitted

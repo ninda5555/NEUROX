@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import pickle
+import re
 import sqlite3
 import uuid
 from pathlib import Path
@@ -23,20 +24,26 @@ def save_model(conn: sqlite3.Connection, models_dir: Path, *, mode: str,
                red_flags: list[dict], train_start: str, train_end: str,
                activate: bool = True, featstats: dict | None = None) -> str:
     from src.models.ensemble import BaggedBooster, calibrator_to_json
+    from src.models.meta import MetaPipeline
     model_id = new_model_id(mode)
     models_dir.mkdir(parents=True, exist_ok=True)
     txt = models_dir / f"{model_id}.txt"
     if txt.exists():
         raise RuntimeError(f"artifact collision for {model_id} — never overwrite")
-    members = booster.members if isinstance(booster, BaggedBooster) else [booster]
+    meta = booster if isinstance(booster, MetaPipeline) else None
+    primary = meta.primary if meta else booster
+    members = primary.members if isinstance(primary, BaggedBooster) else [primary]
     members[0].save_model(str(txt))          # member 0 = the classic artifact
     for i, m in enumerate(members[1:], start=1):
         m.save_model(str(models_dir / f"{model_id}.m{i}.txt"))
+    if meta:
+        meta.meta.save_model(str(models_dir / f"{model_id}.meta.txt"))
     # calibrator as JSON (T10): new artifacts carry no pickle at all —
     # load_active keeps a .pkl fallback for models trained before this.
     (models_dir / f"{model_id}.calib.json").write_text(json.dumps(
         {"calibrator": calibrator_to_json(calibrator),
-         "feature_list": feature_list, "n_members": len(members)}))
+         "feature_list": feature_list, "n_members": len(members),
+         **({"meta_features": meta.ctx_cols} if meta else {})}))
     if featstats:
         # training-time feature distributions — the PSI drift baseline (T7)
         (models_dir / f"{model_id}.featstats.json").write_text(
@@ -178,14 +185,21 @@ def load_active(conn: sqlite3.Connection, mode: str):
         raise LookupError(f"no active model for {mode}")
     artifact = Path(row["artifact_path"])
     booster = lgb.Booster(model_file=str(artifact))
-    extras = sorted(artifact.parent.glob(f"{row['model_id']}.m*.txt"),
-                    key=lambda p: int(p.suffixes[-2][2:]))
+    member_rx = re.compile(re.escape(row["model_id"]) + r"\.m(\d+)\.txt$")
+    extras = sorted((p for p in artifact.parent.glob(f"{row['model_id']}.m*.txt")
+                     if member_rx.search(p.name)),
+                    key=lambda p: int(member_rx.search(p.name).group(1)))
     if extras:
         booster = BaggedBooster([booster] + [lgb.Booster(model_file=str(p))
                                              for p in extras])
     calib_json = artifact.with_suffix(".calib.json")
     if calib_json.exists():
         blob = json.loads(calib_json.read_text())
+        if blob.get("meta_features"):        # T11: wrap the meta filter
+            from src.models.meta import MetaPipeline
+            meta_b = lgb.Booster(
+                model_file=str(artifact.with_suffix(".meta.txt")))
+            booster = MetaPipeline(booster, meta_b, blob["meta_features"])
         return (row["model_id"], booster,
                 calibrator_from_json(blob["calibrator"]), blob["feature_list"])
     with open(artifact.with_suffix(".pkl"), "rb") as fh:   # pre-T10 artifacts

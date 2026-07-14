@@ -63,6 +63,11 @@ def top_contributors(booster, X_row: pd.DataFrame, feature_names: list[str],
     same aggregation as the score itself, so the explanation explains the
     number the user actually sees."""
     from src.models.ensemble import BaggedBooster
+    from src.models.meta import MetaPipeline
+    if isinstance(booster, MetaPipeline):
+        # the meta is a veto/sizing filter; the PRIMARY's drivers are the
+        # trade's reasoning, so that's what the user reads (T11)
+        booster = booster.primary
     X = X_row[feature_names].astype(np.float32)
     if isinstance(booster, BaggedBooster):
         row = np.mean([_shap_row(m, X) for m in booster.members], axis=0)

@@ -46,6 +46,7 @@ DEFAULTS: dict[str, Any] = {
         "time_decay_half_life_days": 0,     # T9: >0 halves sample weight per N days of age (0 = off)
         "swing_uniqueness_weights": False,  # T9: 1/overlap weights for swing labels (off)
         "ensemble_size": 1,                 # T10: >1 = seed-bagged members (1 = off)
+        "meta_labeling": False,             # T11: meta model filters the primary (off)
     },
     "observability": {
         "score_log": True,          # parquet log of ALL scored candidates (T6)

@@ -22,6 +22,10 @@ from src.features.ic_filter import compute_ic_report
 from src.models.calibrate import bucket_of
 
 HORIZON_SESSIONS = {"INTRADAY": 1, "SWING": 11}
+# context columns snapshotted per test row for meta-labeling (T11);
+# the meta model finally uses the subset that survived the IC filter
+META_CTX_CANDIDATES = ["atr_pct", "atr14_pct", "regime_vix", "regime_breadth",
+                       "regime_vix_rising", "vol_zscore", "direction"]
 RISK_PCT = {"INTRADAY": 1.0, "SWING": 1.5}       # §7 defaults, R -> % capital
 R_WIN = {"INTRADAY": 1.5, "SWING": 1.6}          # TP/SL barrier ratios (§5)
 PRECISION_FLOOR = 0.45
@@ -44,6 +48,7 @@ class FoldResult:
     test_pred_raw: np.ndarray = field(repr=False, default=None)
     test_label: np.ndarray = field(repr=False, default=None)
     test_bucket: np.ndarray = field(repr=False, default=None)
+    test_ctx: pd.DataFrame = field(repr=False, default=None)  # meta-label context (T11)
 
 
 def select_features(frame: pd.DataFrame, feature_cols: list[str], label_col: str,
@@ -164,6 +169,8 @@ def run_cv(frame: pd.DataFrame, mode: str, feature_cols: list[str],
             test_bucket=np.array([bucket_of(v, b) for v, b in zip(
                 te.get("regime_vix", pd.Series(np.nan, index=te.index)),
                 te.get("regime_breadth", pd.Series(np.nan, index=te.index)))]),
+            test_ctx=te[[c for c in META_CTX_CANDIDATES if c in te.columns]]
+                .reset_index(drop=True),
         ))
 
     flags = skipped + red_flags(results)

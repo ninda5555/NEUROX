@@ -169,14 +169,37 @@ def main(argv: list[str] | None = None) -> int:
         oof_pred = np.concatenate([r.test_pred_raw for r in results])
         oof_y = np.concatenate([r.test_label for r in results])
         oof_b = np.concatenate([r.test_bucket for r in results])
-        iso = RegimeCalibrator().fit(oof_pred, oof_y, oof_b)
-        curve = calibration_curve_points(iso.transform(oof_pred), oof_y)
+
+        meta_report = None
+        if cfg["training.meta_labeling"]:
+            # T11: the meta scores every OOF row from the primary's raw score
+            # + context, and CALIBRATION is fit on the meta's output instead
+            # of the raw score. ctx must survive the IC filter (subset of
+            # kept) so the scan-time feature frame always carries it.
+            from src.models.meta import (MetaPipeline, meta_matrix,
+                                         prior_fold_report, train_meta_model)
+            ctx_cols = [c for c in cvmod.META_CTX_CANDIDATES if c in kept]
+            X_meta = pd.concat(
+                [meta_matrix(r.test_pred_raw, r.test_ctx, ctx_cols)
+                 for r in results], ignore_index=True)
+            meta_booster = train_meta_model(X_meta, oof_y)
+            meta_report = prior_fold_report(results, ctx_cols)
+            print(f"meta-labeling: ctx {ctx_cols} | prior-fold uplift "
+                  f"{meta_report.get('mean_uplift')} ± {meta_report.get('uplift_std')}")
+            oof_for_cal = meta_booster.predict(X_meta)
+            booster = MetaPipeline(booster, meta_booster, ctx_cols)
+        else:
+            oof_for_cal = oof_pred
+
+        iso = RegimeCalibrator().fit(oof_for_cal, oof_y, oof_b)
+        curve = calibration_curve_points(iso.transform(oof_for_cal), oof_y)
         per_bucket = {b: [round(float(iso.transform([oof_pred.max()], b)[0]), 3)]
                       for b in iso.buckets}
         print(f"regime calibration buckets: {list(iso.buckets)} | "
               f"honest ceiling per bucket at max raw score: {per_bucket}")
 
         cv_report = {"threshold": threshold,
+                     "meta": meta_report,
                      "precision_mean": float(np.mean(precs)) if precs else None,
                      "precision_std": float(np.std(precs)) if precs else None,
                      "folds": [{k: getattr(r, k) for k in
