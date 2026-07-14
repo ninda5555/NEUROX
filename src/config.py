@@ -28,6 +28,7 @@ DEFAULTS: dict[str, Any] = {
         "models": "models",
         "tokens": ".tokens",
         "surveillance_cache": "data/surveillance",
+        "scores": "data/scores",
     },
     "universe": {
         "min_turnover_cr": 5.0,
@@ -41,6 +42,7 @@ DEFAULTS: dict[str, Any] = {
     "backfill": {"daily_days": 730, "fivemin_days": 120},
     "labels": {"min_barrier_atr_pct": 0.30},
     "training": {"retrain_schedule": "weekly"},  # "weekly" (Sat 10:00) | "daily" (~16:45 IST, Mon-Fri)
+    "observability": {"score_log": True},  # parquet log of ALL scored candidates (T6)
     "signals": {"confidence_threshold": 0.60, "scanner_top_n": 12},
     "risk": {
         "capital": 1_000_000,

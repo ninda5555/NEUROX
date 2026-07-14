@@ -19,6 +19,7 @@ from src.features import intraday as intraday_mod
 from src.features import swing as swing_mod
 from src.features.build import REGIME_COLS
 from src.features.regime import NIFTY_SYMBOL, regime_feature_frame
+from src.journal.scorelog import log_scores
 from src.models.calibrate import RegimeCalibrator, bucket_of
 from src.models.registry import load_active
 from src.risk.loss_limit import DayRiskTracker
@@ -94,7 +95,7 @@ def intraday_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
             if r is not None:
                 rows.append(r)
 
-    cands = []
+    cands, score_rows = [], []
     for r in rows:
         feat = {**r["features"], **regime_feats}
         if ofi_lookup is not None:
@@ -108,12 +109,16 @@ def intraday_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
             p = float(cal.transform(raw_p, bkt)[0]) if isinstance(cal, RegimeCalibrator) \
                 else float(cal.transform(raw_p)[0])
             if best is None or p > best[0]:
-                best = (p, d, fd)
-        p, d, fd = best
+                best = (p, d, fd, float(raw_p[0]), bkt)
+        p, d, fd, raw, bkt = best
         cands.append(Candidate(symbol=r["symbol"], mode="INTRADAY", direction=d,
                                confidence=p, price=r["price"], atr=r["atr"],
                                features=fd, orb_low=r["orb_low"],
                                orb_high=r["orb_high"], ts=r["ts"]))
+        score_rows.append({"ts": r["ts"], "symbol": r["symbol"],
+                           "mode": "INTRADAY", "model_id": model_id,
+                           "direction": d, "score_raw": raw, "confidence": p,
+                           "bucket": bkt, "emitted": 0, **fd})
 
     top = rank(cands, snapshot_turnover(conn), cfg["signals.scanner_top_n"])
     tracker = DayRiskTracker(conn, cfg["risk.capital"],
@@ -132,6 +137,11 @@ def intraday_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
                     tracker=tracker)
         if card:
             emitted.append(card)
+    done = {card["symbol"] for card in emitted}
+    for sr in score_rows:
+        sr["emitted"] = int(sr["symbol"] in done)
+    log_scores(cfg.path("paths.scores"), "INTRADAY", score_rows,
+               enabled=cfg["observability.score_log"])
     best_p = max((c.confidence for c in cands), default=float("nan"))
     log.info("intraday pass %s: %d scored, best p %.3f, %d emitted",
              asof.strftime("%H:%M"), len(cands), best_p, len(emitted))
@@ -150,7 +160,7 @@ def swing_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
     tracker = DayRiskTracker(conn, cfg["risk.capital"],
                              cfg["risk.daily_loss_limit_pct"],
                              cfg["risk.loss_limit_warn_frac"])
-    cands = []
+    cands, score_rows = [], []
     for sym in symbols:
         d = store.read_candles("1d", sym)
         if len(d) < 210:
@@ -172,6 +182,10 @@ def swing_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
                                confidence=p, price=price,
                                atr=atr_pct / 100 * price, features=feat,
                                ts=last["ts"].isoformat()))
+        score_rows.append({"ts": last["ts"].isoformat(), "symbol": sym,
+                           "mode": "SWING", "model_id": model_id,
+                           "direction": 1, "score_raw": float(raw_p[0]),
+                           "confidence": p, "bucket": bkt, "emitted": 0, **feat})
     top = rank(cands, snapshot_turnover(conn), cfg["signals.scanner_top_n"])
     emitted = []
     for c in top:
@@ -181,6 +195,11 @@ def swing_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
                     tracker=tracker)
         if card:
             emitted.append(card)
+    done = {card["symbol"] for card in emitted}
+    for sr in score_rows:
+        sr["emitted"] = int(sr["symbol"] in done)
+    log_scores(cfg.path("paths.scores"), "SWING", score_rows,
+               enabled=cfg["observability.score_log"])
     best_p = max((c.confidence for c in cands), default=float("nan"))
     log.info("swing pass %s: %d scored, best p %.3f, %d emitted",
              today, len(cands), best_p, len(emitted))

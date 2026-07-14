@@ -45,6 +45,12 @@ training:                 # CLAUDE.md §6.2, deploy/ scheduler
   retrain_schedule: "weekly"  # "weekly" (Sat 10:00 IST, default) or "daily"
                                # (~16:45 IST Mon-Fri, after the candle top-up)
 
+observability:
+  score_log: true         # log EVERY scored candidate (not just emitted
+                           # signals) to data/scores/{mode}/{date}.parquet —
+                           # feeds drift monitoring; ~a few MB/day. Kill
+                           # switch only; scans never fail on a log error.
+
 signals:                  # CLAUDE.md §6.3
   confidence_threshold: 0.60
   scanner_top_n: 12
