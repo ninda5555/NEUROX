@@ -117,6 +117,7 @@ systemctl daemon-reload
 systemctl enable neurox-dashboard.service neurox-scheduler.service
 
 bash "$APP_DIR/deploy/firewall.sh"
+bash "$APP_DIR/deploy/harden_ssh.sh"
 
 echo "==> [8/8] Starting services + self-check"
 # Both services start cleanly with no Fyers credentials yet: the dashboard

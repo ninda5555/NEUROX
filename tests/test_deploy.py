@@ -102,6 +102,16 @@ def test_server_setup_rewrites_readwritepaths_on_override():
         "server_setup.sh must rewrite ReadWritePaths when NEUROX_APP_DIR is overridden"
 
 
+def test_harden_ssh_guards_against_lockout():
+    text = (DEPLOY / "harden_ssh.sh").read_text()
+    assert "PasswordAuthentication no" in text
+    assert "authorized_keys" in text, "must check for a key before disabling passwords"
+    assert re.search(r"sshd -t", text), "must validate sshd config before reload"
+    assert "server_setup.sh" in (DEPLOY / "server_setup.sh").read_text() or \
+        "harden_ssh.sh" in (DEPLOY / "server_setup.sh").read_text(), \
+        "server_setup.sh must invoke harden_ssh.sh"
+
+
 def test_server_setup_is_idempotent_and_logs():
     text = (DEPLOY / "server_setup.sh").read_text()
     assert "set -euo pipefail" in text
