@@ -166,6 +166,8 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     cfg = load_config()
+    from src.logsafe import install_redaction
+    install_redaction(cfg)  # §12: secrets never reach the journal (T8)
     s = BlockingScheduler(timezone=IST)
     wd = "mon-fri"
     s.add_job(_safe(job_daily_auto_login),

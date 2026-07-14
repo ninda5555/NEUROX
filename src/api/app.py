@@ -25,6 +25,8 @@ from src.risk.loss_limit import DayRiskTracker
 from src.timeutil import ist_date, now_ist
 
 cfg = load_config()
+from src.logsafe import install_redaction  # noqa: E402
+install_redaction(cfg)  # §12: secrets never reach uvicorn's log stream (T8)
 DB_PATH = os.environ.get("NEUROX_DB") or str(cfg.path("paths.db"))
 app = FastAPI(title="NSE Trading Assistant", version="0.4.0")
 
