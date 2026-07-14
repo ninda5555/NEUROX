@@ -105,11 +105,31 @@ def project_root() -> Path:
     return Path(os.environ.get("NEUROX_ROOT", Path(__file__).resolve().parents[1]))
 
 
+def _warn_if_world_readable(p: Path) -> None:
+    """config.yaml holds the Fyers secret (and, if auto_login is on, the TOTP
+    seed + PIN) — §12. Warn, non-fatally, if it's readable by group/other on
+    a POSIX box so a misconfigured deploy is visible instead of silent. Never
+    raises: a perms check must not be able to take the dashboard down."""
+    if os.name != "posix":
+        return
+    try:
+        mode = p.stat().st_mode
+    except OSError:
+        return
+    if mode & 0o077:
+        import warnings
+        warnings.warn(
+            f"{p} is group/other-accessible (mode {oct(mode & 0o777)}); it "
+            "holds credentials (§12). Run: chmod 600 " + str(p),
+            stacklevel=2)
+
+
 def load_config(config_path: str | Path | None = None) -> Config:
     root = project_root()
     p = Path(config_path) if config_path else root / "config.yaml"
     data = DEFAULTS
     if p.exists():
+        _warn_if_world_readable(p)
         with open(p) as f:
             user = yaml.safe_load(f) or {}
         if not isinstance(user, dict):

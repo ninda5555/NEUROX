@@ -89,6 +89,9 @@ if [ ! -f "$APP_DIR/config.yaml" ]; then
 else
   echo "    config.yaml already present — left untouched."
 fi
+# It holds the Fyers secret (and TOTP seed + PIN if auto_login is on) — §12.
+# Owner-only, always, whether we just made it or it predates this run.
+chmod 600 "$APP_DIR/config.yaml"
 
 echo "==> [6/8] Tailscale (private dashboard access, no public exposure)"
 if ! command -v tailscale >/dev/null 2>&1; then

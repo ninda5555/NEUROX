@@ -57,6 +57,28 @@ def test_firewall_denies_dashboard_port_publicly():
     assert "allow OpenSSH" in text or "allow ssh" in text.lower()
 
 
+def test_never_recommends_tailscale_funnel():
+    """`tailscale funnel` publishes the (no-auth) dashboard to the public
+    internet — the opposite of `tailscale serve`. No deploy script may invoke
+    it, and docs may only mention it inside an explicit prohibition."""
+    for sh in (DEPLOY).glob("*.sh"):
+        assert "funnel" not in sh.read_text().lower(), \
+            f"{sh.name} mentions tailscale funnel — it must never appear in a script"
+    # In docs, the *command* `tailscale funnel` may appear only on a
+    # prohibition line; explanatory prose about what funnel does is fine.
+    setup = (DEPLOY.parent / "SETUP.md").read_text().splitlines()
+    for i, line in enumerate(setup):
+        if "tailscale funnel" in line.lower():
+            assert "never" in line.lower() or "not " in line.lower(), \
+                f"SETUP.md:{i+1} shows `tailscale funnel` outside a prohibition: {line.strip()}"
+
+
+def test_server_setup_locks_down_config_perms():
+    text = (DEPLOY / "server_setup.sh").read_text()
+    assert re.search(r"chmod 600 .*config\.yaml", text), \
+        "server_setup.sh must chmod 600 config.yaml (holds the Fyers secret)"
+
+
 def test_server_setup_is_idempotent_and_logs():
     text = (DEPLOY / "server_setup.sh").read_text()
     assert "set -euo pipefail" in text

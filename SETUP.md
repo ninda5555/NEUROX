@@ -122,6 +122,19 @@ dashboard, reachable from anywhere, reachable by no one else — the server's
 public firewall never opens the dashboard port at all
 (`deploy/firewall.sh`).
 
+> ⚠️ **Use `tailscale serve`, never `tailscale funnel`.** `serve` exposes the
+> dashboard only inside your private tailnet. `funnel` would publish it to the
+> **public internet** — and this dashboard has no login (that's a deliberate
+> single-user trust model, see CLAUDE.md §12), so funnel would hand your
+> scanner/journal to anyone with the URL. There is no reason to ever run
+> funnel here.
+>
+> **Oracle Cloud users — also close it in the VCN.** `deploy/firewall.sh` sets
+> the host firewall (ufw), but Oracle's own **VCN Security List / Network
+> Security Group** is a second, separate layer. Leave ingress on TCP **8000**
+> **closed** there (only 22/SSH open). Tailscale needs no inbound port opened
+> in the VCN — it connects outbound — so you never have to poke a hole for it.
+
 **From then on:** the scheduler retrains and rescans on its own
 (`training.retrain_schedule` in `config.yaml` — `weekly`, Saturday morning,
 by default; set it to `daily` for a retrain every trading evening instead).
