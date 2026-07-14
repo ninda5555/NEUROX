@@ -79,6 +79,29 @@ def test_server_setup_locks_down_config_perms():
         "server_setup.sh must chmod 600 config.yaml (holds the Fyers secret)"
 
 
+SANDBOX_DIRECTIVES = ("NoNewPrivileges=true", "ProtectSystem=full",
+                      "ProtectHome=read-only", "ReadWritePaths=",
+                      "PrivateTmp=true", "CapabilityBoundingSet=",
+                      "SystemCallFilter=@system-service", "UMask=0077")
+
+
+@pytest.mark.parametrize("name,memory_max", [
+    ("neurox-dashboard.service", "MemoryMax=1500M"),
+    ("neurox-scheduler.service", "MemoryMax=4500M"),
+])
+def test_systemd_units_are_sandboxed(name, memory_max):
+    text = _unit(name)
+    for directive in SANDBOX_DIRECTIVES:
+        assert directive in text, f"{name} missing sandbox directive {directive}"
+    assert memory_max in text, f"{name} missing {memory_max}"
+
+
+def test_server_setup_rewrites_readwritepaths_on_override():
+    text = (DEPLOY / "server_setup.sh").read_text()
+    assert re.search(r"sed .*ReadWritePaths", text), \
+        "server_setup.sh must rewrite ReadWritePaths when NEUROX_APP_DIR is overridden"
+
+
 def test_server_setup_is_idempotent_and_logs():
     text = (DEPLOY / "server_setup.sh").read_text()
     assert "set -euo pipefail" in text

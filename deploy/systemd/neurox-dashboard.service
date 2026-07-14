@@ -14,5 +14,19 @@ ExecStart=/home/ubuntu/NEUROX/.venv/bin/uvicorn src.api.app:app --host 127.0.0.1
 Restart=always
 RestartSec=5
 
+# Sandbox (defense in depth; server_setup.sh rewrites ReadWritePaths if
+# NEUROX_APP_DIR is overridden). The service reads/writes only the app dir
+# (SQLite DB + WAL, parquet, .tokens, fyers_logs); everything else read-only.
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/NEUROX
+PrivateTmp=true
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+UMask=0077
+# Reader process — a leak here must never squeeze the scheduler/retrain.
+MemoryMax=1500M
+
 [Install]
 WantedBy=multi-user.target

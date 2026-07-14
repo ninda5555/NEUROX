@@ -111,6 +111,7 @@ for unit in neurox-dashboard.service neurox-scheduler.service; do
   sed -i "s|^User=.*|User=$SERVICE_USER|" "$f"
   sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$APP_DIR|" "$f"
   sed -i "s|^ExecStart=/home/ubuntu/NEUROX/|ExecStart=$APP_DIR/|" "$f"
+  sed -i "s|^ReadWritePaths=.*|ReadWritePaths=$APP_DIR|" "$f"
 done
 systemctl daemon-reload
 systemctl enable neurox-dashboard.service neurox-scheduler.service

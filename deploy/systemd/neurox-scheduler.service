@@ -12,5 +12,22 @@ ExecStart=/home/ubuntu/NEUROX/.venv/bin/python -m src.jobs.scheduler
 Restart=always
 RestartSec=10
 
+# Sandbox (defense in depth; server_setup.sh rewrites ReadWritePaths if
+# NEUROX_APP_DIR is overridden).
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/NEUROX
+PrivateTmp=true
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+UMask=0077
+# Cap below the 6GB box total so a runaway retrain gets OOM-killed inside
+# this unit (Restart=always brings the scheduler back) instead of the kernel
+# picking an arbitrary victim like sshd. If a legitimate retrain starts
+# hitting this at larger data scale, trim backfill.fivemin_days or move
+# retrains off-box rather than raising the cap toward total RAM.
+MemoryMax=4500M
+
 [Install]
 WantedBy=multi-user.target
