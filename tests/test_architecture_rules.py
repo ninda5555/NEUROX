@@ -48,11 +48,44 @@ def test_no_naive_datetime_now_in_src():
     assert not offenders, "naive datetime usage:\n" + "\n".join(offenders)
 
 
+ORDER_WORDS = re.compile(
+    r"place_?order|modify_?order|cancel_?order|exit_?position|orders/sync|"
+    r"multiorder|basket_?order|convert_?position",
+    re.I)
+
+
 def test_order_placement_stays_unwired():
-    """§17.8: V1 places no orders. No order-placement endpoints anywhere."""
-    banned = re.compile(r"place_order|placeorder|orders/sync|modify_order|cancel_order", re.I)
+    """§17.8: V1 places no orders. Static grep for order-placement code."""
     offenders = []
     for p in _py_files(SRC):
-        if banned.search(p.read_text()):
+        if ORDER_WORDS.search(p.read_text()):
             offenders.append(str(p.relative_to(ROOT)))
     assert not offenders, f"order-placement code found (V2-gated): {offenders}"
+
+
+def test_fyers_client_exposes_no_order_methods():
+    """§17.8 by introspection: the ONLY wrapper that may touch Fyers
+    (FyersClient) must expose no order-placement method at runtime — a grep
+    can miss a dynamically-named attribute, this cannot."""
+    from src.fyers.client import FyersClient
+    public = [n for n in dir(FyersClient) if not n.startswith("_")]
+    offenders = [n for n in public if ORDER_WORDS.search(n)]
+    assert not offenders, f"FyersClient exposes order method(s): {offenders}"
+    # the wrapper's whole REST method surface, pinned — anything new here is a
+    # deliberate review point, not an accident (`limiter` is an instance attr,
+    # not on the class, so it isn't in dir(FyersClient))
+    assert set(public) == {"set_access_token", "profile", "quotes", "history",
+                           "get_public_file"}, \
+        f"FyersClient surface changed: {sorted(public)}"
+
+
+def test_no_api_route_places_orders():
+    """§17.8 by introspection: the live FastAPI app, as actually mounted,
+    exposes no route whose path or handler name implies order placement."""
+    from src.api.app import app
+    for route in app.routes:
+        path = getattr(route, "path", "")
+        name = getattr(getattr(route, "endpoint", None), "__name__", "")
+        assert not ORDER_WORDS.search(path), f"order route path: {path}"
+        assert not ORDER_WORDS.search(name), f"order route handler: {name}"
+        assert "order" not in path.lower(), f"'order' in route path: {path}"
