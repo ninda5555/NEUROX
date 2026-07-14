@@ -41,9 +41,14 @@ def emit(conn: sqlite3.Connection, store: CandleStore, cfg, *, model_id: str,
          booster, feature_list: list[str], candidate: Candidate,
          regime: dict | None, tracker: DayRiskTracker) -> dict | None:
     """Returns the journaled signal card, or None (gate refused)."""
+    from src.models.calibrate import bucket_of
     c = candidate
     thr = cfg["signals.confidence_threshold"]
-    if c.confidence < thr:
+    # T12 (all-zero bumps = off): regimes that historically punished setups
+    # can demand more confidence before anything is emitted
+    bucket = bucket_of(c.features.get("regime_vix"), c.features.get("regime_breadth"))
+    bump = cfg["signals.regime_threshold_bump"][bucket]
+    if c.confidence < thr + bump:
         return None
     if c.mode == "INTRADAY" and not tracker.allows_new_intraday():
         return None
@@ -81,6 +86,9 @@ def emit(conn: sqlite3.Connection, store: CandleStore, cfg, *, model_id: str,
             flags.append(ef)
     if capped:
         flags.append("Position capped at 20% of capital notional")
+    if bump > 0:
+        flags.append(f"Regime-tightened gate in effect: this tape required "
+                     f"{thr + bump:.2f} confidence (base {thr:.2f})")
     ls = tracker.status()
     if ls["state"] == "warning":
         flags.append("Daily loss limit warning (75% reached)")

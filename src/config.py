@@ -53,7 +53,16 @@ DEFAULTS: dict[str, Any] = {
         "psi_window_days": 5,       # live window compared against training (T7)
         "psi_flag_threshold": 0.25, # PSI above this => feature-drift red flag
     },
-    "signals": {"confidence_threshold": 0.60, "scanner_top_n": 12},
+    "signals": {
+        "confidence_threshold": 0.60,
+        "scanner_top_n": 12,
+        # T12 (all-zero = off): additive per-regime-bucket threshold bumps —
+        # e.g. hv_bn 0.05 demands 0.65 in a high-VIX/negative-breadth tape
+        "regime_threshold_bump": {
+            "hv_bn": 0.0, "hv_bp": 0.0, "lv_bn": 0.0, "lv_bp": 0.0,
+            "unknown": 0.0,
+        },
+    },
     "risk": {
         "capital": 1_000_000,
         "intraday_risk_pct": 1.0,

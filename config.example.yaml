@@ -67,6 +67,12 @@ observability:
 signals:                  # CLAUDE.md §6.3
   confidence_threshold: 0.60
   scanner_top_n: 12
+  regime_threshold_bump:  # T12, OFF at all-zero: extra confidence demanded
+    hv_bn: 0.0            # per regime bucket (high/low VIX x breadth +/-).
+    hv_bp: 0.0            # e.g. hv_bn: 0.05 -> 0.65 needed in a high-VIX,
+    lv_bn: 0.0            # negative-breadth tape. Active bumps are shown in
+    lv_bp: 0.0            # the status banner and on each signal's flags.
+    unknown: 0.0
 
 risk:                     # CLAUDE.md §7
   capital: 1000000        # ₹ paper capital

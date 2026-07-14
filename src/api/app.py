@@ -81,8 +81,22 @@ def status():
         "loss_limit": tracker.status(),
         "drift": drift,
         "disclosure": DISCLOSURE,
-        "mode_thresholds": {"confidence": cfg["signals.confidence_threshold"]},
+        "mode_thresholds": _thresholds(dict(regime) if regime else None),
     }
+
+
+def _thresholds(regime: dict | None) -> dict:
+    """T12 banner: base threshold, per-bucket bumps, and what the CURRENT
+    regime effectively demands — shown, never silent."""
+    from src.models.calibrate import bucket_of
+    base = cfg["signals.confidence_threshold"]
+    bumps = cfg["signals.regime_threshold_bump"]
+    bucket = bucket_of((regime or {}).get("vix"),
+                       (regime or {}).get("breadth_adv_dec"))
+    return {"confidence": base, "regime_bumps": bumps,
+            "current_bucket": bucket,
+            "effective": round(base + bumps[bucket], 4),
+            "tightened": bumps[bucket] > 0}
 
 
 def _spark(symbol: str, mode: str) -> list[float]:
