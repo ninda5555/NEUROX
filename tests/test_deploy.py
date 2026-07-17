@@ -102,6 +102,32 @@ def test_server_setup_rewrites_readwritepaths_on_override():
         "server_setup.sh must rewrite ReadWritePaths when NEUROX_APP_DIR is overridden"
 
 
+def test_requirements_lock_is_hashed_and_covers_direct_deps():
+    root = DEPLOY.parent
+    lock = (root / "requirements.lock").read_text()
+    assert "--hash=sha256:" in lock, "requirements.lock must carry hashes (T14)"
+    direct = [l.split("==")[0].strip().lower()
+              for l in (root / "requirements.txt").read_text().splitlines()
+              if "==" in l and not l.strip().startswith("#")]
+    lock_pkgs = {l.split("==")[0].strip().lower()
+                 for l in lock.splitlines() if "==" in l and not l.startswith(" ")}
+    missing = [d for d in direct if d not in lock_pkgs]
+    assert not missing, f"requirements.lock missing direct deps: {missing}"
+
+
+def test_server_setup_installs_tailscale_via_apt_and_unattended_upgrades():
+    text = (DEPLOY / "server_setup.sh").read_text()
+    assert "sources.list.d/tailscale.list" in text, "Tailscale must come from the apt repo, not curl|sh"
+    assert "apt-get install -y -qq tailscale" in text
+    assert "unattended-upgrades" in text
+
+
+def test_ci_workflow_runs_hashed_install_and_pytest():
+    ci = (DEPLOY.parent / ".github" / "workflows" / "ci.yml").read_text()
+    assert "--require-hashes -r requirements.lock" in ci
+    assert "pytest" in ci
+
+
 def test_harden_ssh_guards_against_lockout():
     text = (DEPLOY / "harden_ssh.sh").read_text()
     assert "PasswordAuthentication no" in text

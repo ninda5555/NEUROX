@@ -93,12 +93,23 @@ fi
 # Owner-only, always, whether we just made it or it predates this run.
 chmod 600 "$APP_DIR/config.yaml"
 
-echo "==> [6/8] Tailscale (private dashboard access, no public exposure)"
+echo "==> [6/8] Tailscale (apt repo) + unattended security upgrades"
 if ! command -v tailscale >/dev/null 2>&1; then
-  curl -fsSL https://tailscale.com/install.sh | sh
+  # Explicit apt repo (auditable + upgradable via apt) instead of curl|sh.
+  install -d -m 0755 /usr/share/keyrings
+  curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg \
+    -o /usr/share/keyrings/tailscale-archive-keyring.gpg
+  curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list \
+    -o /etc/apt/sources.list.d/tailscale.list
+  apt-get update -qq
+  apt-get install -y -qq tailscale
 else
   echo "    tailscale already installed"
 fi
+# Automatic security patches on an unattended box.
+apt-get install -y -qq unattended-upgrades
+dpkg-reconfigure -f noninteractive unattended-upgrades >/dev/null 2>&1 || true
+systemctl enable --now unattended-upgrades >/dev/null 2>&1 || true
 
 echo "==> [7/8] systemd services + firewall"
 cp "$APP_DIR/deploy/systemd/neurox-dashboard.service" /etc/systemd/system/

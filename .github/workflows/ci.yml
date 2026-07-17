@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install pinned, hash-verified dependencies
+        # requirements.lock is the full transitive closure with SHA256 hashes
+        # (T14). --require-hashes makes a tampered/substituted wheel fail the
+        # build instead of silently installing.
+        run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes -r requirements.lock
+
+      - name: Run test suite
+        run: python -m pytest -q
+
+      - name: Guard — no order-placement code (V1, CLAUDE.md §17.8)
+        run: python -m pytest tests/test_architecture_rules.py tests/test_deploy.py -q
