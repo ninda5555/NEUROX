@@ -39,7 +39,7 @@ export default function Journal({ mode }) {
           <div className="text-xs text-dim">cumulative R · costs modeled (0.05%/side)</div>
         </div>
         <div className="flex items-baseline gap-3 mb-3">
-          <span className="font-mono text-2xl font-semibold" style={{ color }}>{last >= 0 ? '+' : ''}{fmt(last, 1)}R</span>
+          <span className="font-mono text-3xl md:text-2xl font-semibold" style={{ color }}>{last >= 0 ? '+' : ''}{fmt(last, 1)}R</span>
           <span className="text-xs text-dim">net over {data.paper.n} paper trades · max drawdown −{fmt(dd, 1)}R · costs ₹{fmtIn(data.paper.costs)}</span>
         </div>
         <svg width="100%" height="150" viewBox="0 0 900 150" preserveAspectRatio="none" className="block">

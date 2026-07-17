@@ -43,15 +43,15 @@ export default function Universe() {
       <div className="grid grid-cols-3 gap-2.5 sm:gap-3.5 mb-[18px]">
         <div className="glass-card px-5 py-[18px]">
           <div className="text-[11.5px] text-dim mb-2">Series scanned</div>
-          <div className="font-mono text-[21px] sm:text-[28px] font-semibold">{fmtIn(data.scanned)}</div>
+          <div className="font-mono text-[24px] sm:text-[28px] font-semibold">{fmtIn(data.scanned)}</div>
         </div>
         <div className="px-5 py-[18px] rounded-[14px]" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
           <div className="text-[11.5px] text-dim mb-2">Included</div>
-          <div className="font-mono text-[21px] sm:text-[28px] font-semibold text-mint">{fmtIn(data.included)}</div>
+          <div className="font-mono text-[24px] sm:text-[28px] font-semibold text-mint">{fmtIn(data.included)}</div>
         </div>
         <div className="px-5 py-[18px] rounded-[14px]" style={{ background: 'rgba(244,63,94,0.05)', border: '1px solid rgba(244,63,94,0.18)' }}>
           <div className="text-[11.5px] text-dim mb-2">Excluded</div>
-          <div className="font-mono text-[21px] sm:text-[28px] font-semibold text-rose">{fmtIn(data.scanned - data.included)}</div>
+          <div className="font-mono text-[24px] sm:text-[28px] font-semibold text-rose">{fmtIn(data.scanned - data.included)}</div>
         </div>
       </div>
 

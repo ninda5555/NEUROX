@@ -17,6 +17,38 @@ body {
 .livepulse { animation: livepulse 1.8s ease-in-out infinite; }
 input::placeholder { color: #4A5468; }
 
+/* ---- mobile app feel ---------------------------------------------------- */
+/* our pull-to-refresh owns the gesture; stop Chrome's native one fighting it */
+@media (max-width: 767px) {
+  html, body { overscroll-behavior-y: contain; }
+}
+
+/* page enter: quick fade + lift on tab switch / refresh */
+@keyframes pagein { from { opacity: 0; transform: translateY(10px); }
+                    to   { opacity: 1; transform: none; } }
+.page-enter { animation: pagein 240ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.ptr-spinner {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2.5px solid rgba(167,139,250,0.25);
+  border-top-color: #A78BFA;
+}
+.ptr-spin { animation: spin 0.8s linear infinite; }
+
+/* native-style tab press feedback */
+.tab-btn { transition: transform 120ms ease; -webkit-tap-highlight-color: transparent; }
+.tab-btn:active { transform: scale(0.92); }
+
+/* one-line horizontally scrollable chip row on phones */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter { animation: none; }
+  .tab-btn, .tab-btn:active { transition: none; transform: none; }
+}
+
 .glass-card {
   background: linear-gradient(180deg, rgba(167,139,250,0.08), rgba(255,255,255,0.016));
   border: 1px solid rgba(167,139,250,0.17);

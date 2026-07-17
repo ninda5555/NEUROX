@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getStatus, isPreview, previewNote } from './api.js'
 import Rail from './components/Rail.jsx'
 import MobileNav from './components/MobileNav.jsx'
@@ -12,10 +12,17 @@ import Universe from './pages/Universe.jsx'
 
 const PAGES = { scanner: Scanner, search: Search, journal: Journal, model: Model, universe: Universe }
 
+const PULL_TRIGGER = 64   // px of (damped) pull that arms a refresh
+const PULL_MAX = 90
+
 export default function App() {
   const [mode, setMode] = useState('INTRADAY')
   const [page, setPage] = useState('scanner')
   const [status, setStatus] = useState(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [pull, setPull] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
+  const touchStart = useRef(null)
 
   useEffect(() => {
     let live = true
@@ -25,6 +32,31 @@ export default function App() {
     return () => { live = false; clearInterval(id) }
   }, [])
 
+  // Pull-to-refresh (phones): drag down from the top of the page; pages
+  // fetch on mount, so bumping refreshKey remounts the page = refetch.
+  const onTouchStart = (e) => {
+    touchStart.current = window.scrollY <= 0 ? e.touches[0].clientY : null
+  }
+  const onTouchMove = (e) => {
+    if (touchStart.current == null || refreshing) return
+    const dy = e.touches[0].clientY - touchStart.current
+    if (dy > 0 && window.scrollY <= 0) setPull(Math.min(dy * 0.4, PULL_MAX))
+    else setPull(0)
+  }
+  const onTouchEnd = async () => {
+    const armed = pull >= PULL_TRIGGER
+    touchStart.current = null
+    if (!armed) { setPull(0); return }
+    setRefreshing(true)
+    setPull(PULL_TRIGGER * 0.7)
+    const t0 = Date.now()
+    try { setStatus(await getStatus()) } catch { /* keep last status */ }
+    setRefreshKey((k) => k + 1)
+    // let the spinner read as a gesture, not a flicker
+    const wait = Math.max(0, 450 - (Date.now() - t0))
+    setTimeout(() => { setRefreshing(false); setPull(0) }, wait)
+  }
+
   const Page = PAGES[page]
   return (
     <div className="min-h-screen p-0 sm:p-3 md:p-5"
@@ -33,7 +65,8 @@ export default function App() {
            style={{ background: 'linear-gradient(180deg, rgba(16,21,34,0.86), rgba(10,13,22,0.92))', boxShadow: '0 50px 140px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.02) inset, 0 1px 0 rgba(255,255,255,0.05) inset' }}>
         <Rail page={page} setPage={setPage} />
         {/* pb reserves room for the fixed MobileNav below md */}
-        <div className="flex-1 min-w-0 flex flex-col pb-[58px] md:pb-0">
+        <div className="flex-1 min-w-0 flex flex-col pb-[70px] md:pb-0"
+             onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
           <TopBar mode={mode} setMode={setMode} status={status} />
           <StatusStrip status={status} />
           {isPreview() && previewNote() && (
@@ -43,7 +76,14 @@ export default function App() {
               <span>{previewNote()}</span>
             </div>
           )}
-          <main className="flex-1 w-full p-4 md:p-7">
+          {/* pull-to-refresh indicator (phones) */}
+          <div className="md:hidden flex justify-center overflow-hidden transition-[height]"
+               style={{ height: `${Math.round(pull * 0.6)}px` }} aria-hidden="true">
+            <div className={`ptr-spinner mt-1 ${refreshing ? 'ptr-spin' : ''}`}
+                 style={{ opacity: Math.min(pull / PULL_TRIGGER, 1),
+                          transform: refreshing ? 'none' : `rotate(${pull * 3.2}deg)` }} />
+          </div>
+          <main key={`${page}-${refreshKey}`} className="page-enter flex-1 w-full p-4 md:p-7">
             <Page mode={mode} status={status} />
           </main>
           <footer className="md:sticky md:bottom-0 z-30 backdrop-blur-[14px] border-t border-white/[0.08]"

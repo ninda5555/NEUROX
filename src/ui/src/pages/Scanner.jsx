@@ -26,7 +26,7 @@ function Card({ c }) {
   const accent = long ? '#34D399' : '#FB7185'
   const extreme = Math.max(...(c.shap_full || []).map((x) => Math.abs(x.shap)), 0.001)
   return (
-    <div className="glass-card overflow-hidden">
+    <div className="glass-card overflow-hidden shadow-[0_12px_36px_rgba(0,0,0,0.4)] md:shadow-none">
       <div className="px-[18px] pt-4 pb-3.5 flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-[9px]">
@@ -51,7 +51,7 @@ function Card({ c }) {
       <div className="px-[18px] pb-3.5">
         <div className="flex items-baseline justify-between mb-1.5">
           <span className="text-xs text-soft">{c.phrase}</span>
-          <span className="font-mono text-[13px] text-ink font-medium">{fmt(c.confidence)} <span className="text-dim text-[11px]">calibrated</span></span>
+          <span className="font-mono text-[16px] md:text-[13px] text-ink font-semibold md:font-medium">{fmt(c.confidence)} <span className="text-dim text-[11px] font-normal">calibrated</span></span>
         </div>
         <div className="h-[5px] rounded-[3px] bg-white/[0.06] overflow-hidden">
           <div className="h-full rounded-[3px]" style={{ width: `${Math.round(c.confidence * 100)}%`, background: accent }} />
@@ -71,7 +71,7 @@ function Card({ c }) {
           ['Qty', fmtIn(c.qty), '#E6EAF2'], ['₹ at risk', fmtIn(Math.round(c.at_risk)), '#E6EAF2'], ['% capital', fmt(c.risk_pct) + '%', '#E6EAF2']].map(([k, v, col]) => (
           <div key={k}>
             <div className="text-[10.5px] text-dim mb-[3px]">{k}</div>
-            <div className="font-mono text-[13.5px]" style={{ color: col }}>{v}</div>
+            <div className="font-mono text-[15px] md:text-[13.5px]" style={{ color: col }}>{v}</div>
           </div>
         ))}
       </div>
@@ -89,7 +89,7 @@ function Card({ c }) {
       </div>
 
       <button onClick={() => setOpen(!open)}
-              className="w-full border-0 bg-white/[0.02] border-t border-white/[0.06] cursor-pointer py-[11px] font-sans text-xs text-softer mt-2">
+              className="tab-btn w-full border-0 bg-white/[0.02] border-t border-white/[0.06] cursor-pointer py-3.5 md:py-[11px] font-sans text-xs text-softer mt-2">
         {open ? 'Hide detail ▲' : 'Full SHAP · features · regime ▼'}
       </button>
 
