@@ -56,6 +56,15 @@ training:                 # CLAUDE.md §6.2, deploy/ scheduler
                            # calibration then runs on the meta's output.
                            # Prior-fold OOF uplift reported in cv_report.meta
 
+security:                 # CLAUDE.md §12
+  require_tailscale_identity: false  # T13, OFF: when true, every request must
+                                      # carry a Tailscale-User-Login header
+                                      # (only `tailscale serve` on 127.0.0.1
+                                      # sets it — unspoofable off-tailnet).
+                                      # Hardening headers are always on.
+  allowed_logins: []      # [] = any tailnet identity; else an allowlist,
+                           #      e.g. ["you@gmail.com"] (multi-user)
+
 observability:
   score_log: true         # log EVERY scored candidate (not just emitted
                            # signals) to data/scores/{mode}/{date}.parquet —

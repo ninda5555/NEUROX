@@ -53,6 +53,15 @@ DEFAULTS: dict[str, Any] = {
         "psi_window_days": 5,       # live window compared against training (T7)
         "psi_flag_threshold": 0.25, # PSI above this => feature-drift red flag
     },
+    "security": {
+        # T13, OFF by default (perimeter-only trust model, CLAUDE.md §12).
+        # When true, every request must carry a Tailscale-User-Login header —
+        # only `tailscale serve` on 127.0.0.1 can set it, so it is unspoofable
+        # from off-tailnet. allowed_logins [] = any tailnet identity; non-empty
+        # = an allowlist (the multi-user story).
+        "require_tailscale_identity": False,
+        "allowed_logins": [],
+    },
     "signals": {
         "confidence_threshold": 0.60,
         "scanner_top_n": 12,

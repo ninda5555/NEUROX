@@ -15,6 +15,7 @@ from pathlib import Path
 import pandas as pd
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import JSONResponse
 
 from src import db as dbm
 from src.config import load_config
@@ -34,6 +35,48 @@ DISCLOSURE = ("This is an independent-developer analytics tool, not an "
               "institutional trading system. It estimates probabilities; it "
               "does not predict the future. Most retail intraday traders lose "
               "money (SEBI studies). Not investment advice.")
+
+# T13: always-on hardening headers. CSP is tuned to the SPA — bundled JS is
+# 'self', React inline style attributes need style-src 'unsafe-inline', /ws is
+# same-origin (connect-src 'self'). The one external resource is the Geist
+# webfont (index.html links Google Fonts; the viewer's browser fetches it
+# directly, so it works even on an egress-restricted server) — its two hosts
+# are the only third parties allowed, and scripts/frames/objects stay locked.
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data:; connect-src 'self'; object-src 'none'; "
+        "base-uri 'self'; frame-ancestors 'none'"),
+}
+
+
+def _identity_ok(headers) -> bool:
+    """T13 optional gate (off by default). Trust the Tailscale-User-Login
+    header ONLY because the documented deployment reaches this app solely via
+    `tailscale serve` on 127.0.0.1, which sets it and which off-tailnet
+    callers cannot reach (§12). Not a replacement for the network perimeter —
+    defense in depth + the multi-user allowlist path."""
+    if not cfg["security.require_tailscale_identity"]:
+        return True
+    login = headers.get("tailscale-user-login")
+    allowed = cfg["security.allowed_logins"]
+    return bool(login) and (not allowed or login in allowed)
+
+
+@app.middleware("http")
+async def _security(request, call_next):
+    if not _identity_ok(request.headers):
+        return JSONResponse({"detail": "tailnet identity required"}, status_code=403)
+    resp = await call_next(request)
+    for k, v in SECURITY_HEADERS.items():
+        resp.headers.setdefault(k, v)
+    return resp
 
 
 def conn():
@@ -266,6 +309,9 @@ def search(q: str = ""):
 
 @app.websocket("/ws")
 async def ws(sock: WebSocket):
+    if not _identity_ok(sock.headers):        # T13: http middleware misses WS
+        await sock.close(code=1008)           # policy violation
+        return
     await sock.accept()
     try:
         while True:
