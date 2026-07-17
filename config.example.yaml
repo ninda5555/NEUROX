@@ -56,6 +56,11 @@ training:                 # CLAUDE.md §6.2, deploy/ scheduler
                            # calibration then runs on the meta's output.
                            # Prior-fold OOF uplift reported in cv_report.meta
 
+backup:                   # T16: nightly journal-DB snapshot (21:30 IST)
+  enabled: true           # online backup -> integrity check -> gzip -> prune
+  dir: "data/backups"
+  keep_days: 14
+
 security:                 # CLAUDE.md §12
   require_tailscale_identity: false  # T13, OFF: when true, every request must
                                       # carry a Tailscale-User-Login header

@@ -154,6 +154,17 @@ def job_daily_retrain():
     log.info("daily retrain complete")
 
 
+def job_nightly_backup():
+    """21:30 IST: online-backup the journal DB, integrity-checked + gzipped,
+    with retention pruning (T16). The journal is the audit trail (§13)."""
+    cfg = load_config()
+    if not cfg["backup.enabled"]:
+        return
+    from src.jobs.backup import backup_sqlite
+    backup_sqlite(cfg.path("paths.db"), cfg.path("backup.dir"),
+                  keep_days=cfg["backup.keep_days"])
+
+
 def job_weekly_digest():
     """Friday 16:45 IST: the calibration promise audited against reality."""
     _, conn, _ = _ctx()
@@ -177,6 +188,8 @@ def main() -> None:
     s.add_job(_safe(job_universe_rebuild), CronTrigger(day_of_week=wd, hour=20, minute=30, timezone=IST))
     s.add_job(_safe(job_daily_backfill_universe_candles),
               CronTrigger(day_of_week=wd, hour=21, minute=0, timezone=IST))
+    s.add_job(_safe(job_nightly_backup),
+              CronTrigger(hour=21, minute=30, timezone=IST))  # every night incl. weekends
 
     retrain_schedule = cfg["training.retrain_schedule"]
     if retrain_schedule == "daily":
@@ -188,7 +201,7 @@ def main() -> None:
     s.add_job(_safe(job_weekly_digest), CronTrigger(day_of_week="fri", hour=16, minute=45, timezone=IST))
 
     log.info("scheduler up (IST): auto-login 06:00%s · swing 15:50 · top-up 16:20 "
-             "· universe 20:30 · backfill 21:00 · %s · digest Fri 16:45",
+             "· universe 20:30 · backfill 21:00 · backup 21:30 · %s · digest Fri 16:45",
              " (auto_login off)" if not cfg["fyers.auto_login"] else "", retrain_desc)
     s.start()
 

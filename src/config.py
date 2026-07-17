@@ -53,6 +53,11 @@ DEFAULTS: dict[str, Any] = {
         "psi_window_days": 5,       # live window compared against training (T7)
         "psi_flag_threshold": 0.25, # PSI above this => feature-drift red flag
     },
+    "backup": {
+        "enabled": True,            # T16: nightly gzip snapshot of the journal DB
+        "dir": "data/backups",
+        "keep_days": 14,
+    },
     "security": {
         # T13, OFF by default (perimeter-only trust model, CLAUDE.md §12).
         # When true, every request must carry a Tailscale-User-Login header —
