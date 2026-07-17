@@ -112,6 +112,15 @@ CREATE TABLE IF NOT EXISTS market_regime (
 CREATE TABLE IF NOT EXISTS app_state (             -- auth + operational state
   key TEXT PRIMARY KEY, value TEXT, updated_at TEXT
 ); -- token_day, ws_status, surveillance_file_date, loss_limit_state ...
+CREATE TABLE IF NOT EXISTS validation_runs (       -- T15: offline CPCV/DSR/PBO
+  run_id     TEXT PRIMARY KEY,
+  mode       TEXT NOT NULL CHECK (mode IN ('INTRADAY','SWING')),
+  kind       TEXT NOT NULL,          -- 'cpcv'
+  started_at TEXT NOT NULL,
+  finished_at TEXT,
+  params     TEXT NOT NULL,          -- JSON: n_groups, k_test, thresholds, ...
+  result     TEXT                    -- JSON: splits, sharpe, dsr, pbo, flags
+);
 """
 
 

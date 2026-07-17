@@ -238,6 +238,20 @@ def model(mode: str = "INTRADAY"):
     # the newest registration's champion/challenger decision, promoted or
     # held — the Model page shows WHY, never just the outcome
     latest_decision = history[0]["promotion"] if history else None
+    # newest offline CPCV/DSR/PBO run for this mode (T15), if any
+    vrow = c.execute(
+        "SELECT run_id, started_at, finished_at, result FROM validation_runs "
+        "WHERE mode=? AND result IS NOT NULL ORDER BY started_at DESC LIMIT 1",
+        (mode,)).fetchone()
+    validation = None
+    if vrow:
+        vres = json.loads(vrow["result"])
+        validation = {"run_id": vrow["run_id"], "finished_at": vrow["finished_at"],
+                      "precision_mean": vres.get("precision_mean"),
+                      "precision_std": vres.get("precision_std"),
+                      "deflated_sharpe": vres.get("deflated_sharpe"),
+                      "pbo": vres.get("pbo"),
+                      "n_splits": vres.get("n_splits_run")}
     ic = {}
     ic_files = sorted(Path(cfg.path("paths.features")).glob(f"ic_report_{mode}_*.json"))
     if ic_files:
@@ -256,7 +270,8 @@ def model(mode: str = "INTRADAY"):
             "folds": folds,
             "red_flags": json.loads(m["red_flags"] or "[]"),
             "calibration": json.loads(m["calibration"]),
-            "ic": ic, "history": history, "latest_decision": latest_decision}
+            "ic": ic, "history": history, "latest_decision": latest_decision,
+            "validation": validation}
 
 
 @app.get("/api/universe")
