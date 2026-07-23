@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { getJournal, fmt, fmtIn } from '../api.js'
 
-const rColor = (v) => (v == null ? '#C3CAD8' : v < 0 ? '#FB7185' : v > 0 ? '#34D399' : '#C3CAD8')
+const rColor = (v) => (v == null ? '#C7C7CE' : v < 0 ? '#FB7185' : v > 0 ? '#34D399' : '#C7C7CE')
 const ST = {
   hit_target: ['rgba(16,185,129,0.12)', '#34D399', 'rgba(16,185,129,0.28)', 'target hit'],
   hit_stop: ['rgba(244,63,94,0.12)', '#FB7185', 'rgba(244,63,94,0.28)', 'stopped'],
-  expired: ['rgba(255,255,255,0.05)', '#9AA3B5', 'rgba(255,255,255,0.12)', 'expired'],
-  pending: ['rgba(129,140,248,0.1)', '#C7D2FE', 'rgba(129,140,248,0.22)', 'pending'],
+  expired: ['rgba(255,255,255,0.05)', '#9C9CA4', 'rgba(255,255,255,0.12)', 'expired'],
+  pending: ['rgba(251,191,36,0.08)', '#FDE68A', 'rgba(251,191,36,0.22)', 'pending'],
 }
 
 export default function Journal({ mode }) {

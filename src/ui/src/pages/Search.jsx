@@ -41,7 +41,7 @@ export default function Search() {
                   <td className="px-3 py-3 text-right font-mono text-xs text-body">{s.median_turnover_cr != null ? fmt(s.median_turnover_cr, 1) : '—'}</td>
                   <td className="px-3 py-3 text-right font-mono text-xs text-body">{s.atr_pct != null ? fmt(s.atr_pct, 2) : '—'}</td>
                   <td className="px-3 py-3">
-                    {s.setup ? <span className="text-[11px] text-violet3 font-mono">{s.setup}</span>
+                    {s.setup ? <span className="text-[11px] text-red3 font-mono">{s.setup}</span>
                              : <span className="text-[11px] text-dimmer">—</span>}
                   </td>
                   <td className="px-[18px] py-3 text-right">

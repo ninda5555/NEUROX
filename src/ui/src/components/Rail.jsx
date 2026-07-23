@@ -13,7 +13,7 @@ export default function Rail({ page, setPage }) {
     <aside className="hidden md:flex w-[82px] shrink-0 flex-col items-center py-[22px] gap-1 border-r border-white/[0.06]"
            style={{ background: 'rgba(255,255,255,0.015)' }}>
       <div className="w-[42px] h-[42px] rounded-[13px] flex items-center justify-center font-mono font-bold text-lg text-white mb-[18px]"
-           style={{ background: 'linear-gradient(150deg, #A78BFA, #7C3AED)', boxShadow: '0 8px 24px rgba(139,92,246,0.45)' }}>N</div>
+           style={{ background: 'linear-gradient(150deg, #F87171, #B91C1C)', boxShadow: '0 8px 24px rgba(220,38,38,0.45)' }}>N</div>
       {NAV.map(([k, label]) => {
         const active = page === k
         return (
@@ -21,21 +21,21 @@ export default function Rail({ page, setPage }) {
                   className="flex flex-col items-center gap-1 cursor-pointer py-1.5 bg-transparent border-0">
             <div className="w-[46px] h-[46px] rounded-[14px] flex items-center justify-center transition-all"
                  style={{
-                   border: `1px solid ${active ? 'rgba(167,139,250,0.38)' : 'rgba(255,255,255,0.07)'}`,
-                   background: active ? 'linear-gradient(150deg, rgba(139,92,246,0.24), rgba(167,139,250,0.12))' : 'rgba(255,255,255,0.02)',
-                   boxShadow: active ? '0 6px 20px rgba(124,58,237,0.32)' : 'none',
+                   border: `1px solid ${active ? 'rgba(248,113,113,0.38)' : 'rgba(255,255,255,0.07)'}`,
+                   background: active ? 'linear-gradient(150deg, rgba(220,38,38,0.24), rgba(239,68,68,0.12))' : 'rgba(255,255,255,0.02)',
+                   boxShadow: active ? '0 6px 20px rgba(220,38,38,0.32)' : 'none',
                  }}>
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
-                   stroke={active ? '#C4B5FD' : '#6B7488'} strokeWidth="1.8"
+                   stroke={active ? '#FCA5A5' : '#6B6B76'} strokeWidth="1.8"
                    strokeLinecap="round" strokeLinejoin="round"><path d={ICONS[k]} /></svg>
             </div>
-            <span className="text-[9.5px] tracking-[0.02em]" style={{ color: active ? '#C4B5FD' : '#6B7488' }}>{label}</span>
+            <span className="text-[9.5px] tracking-[0.02em]" style={{ color: active ? '#FCA5A5' : '#6B6B76' }}>{label}</span>
           </button>
         )
       })}
       <div className="flex-1" />
       <div className="w-[38px] h-[38px] rounded-full flex items-center justify-center text-[13px] font-semibold text-white"
-           style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}>A</div>
+           style={{ background: 'linear-gradient(135deg, #991B1B, #EF4444)' }}>A</div>
     </aside>
   )
 }

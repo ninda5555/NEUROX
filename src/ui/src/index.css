@@ -4,18 +4,18 @@
 
 html, body { margin: 0; padding: 0; }
 body {
-  background: #0A0E17;
-  color: #E6EAF2;
+  background: #050506;
+  color: #ECECEE;
   font-family: 'Geist', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.09); border-radius: 6px; border: 2px solid #0A0E17; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.09); border-radius: 6px; border: 2px solid #050506; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
 @keyframes livepulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
 .livepulse { animation: livepulse 1.8s ease-in-out infinite; }
-input::placeholder { color: #4A5468; }
+input::placeholder { color: #55555E; }
 
 /* ---- mobile app feel ---------------------------------------------------- */
 /* our pull-to-refresh owns the gesture; stop Chrome's native one fighting it */
@@ -31,8 +31,8 @@ input::placeholder { color: #4A5468; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .ptr-spinner {
   width: 22px; height: 22px; border-radius: 50%;
-  border: 2.5px solid rgba(167,139,250,0.25);
-  border-top-color: #A78BFA;
+  border: 2.5px solid rgba(248,113,113,0.25);
+  border-top-color: #F87171;
 }
 .ptr-spin { animation: spin 0.8s linear infinite; }
 
@@ -44,19 +44,78 @@ input::placeholder { color: #4A5468; }
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-@media (prefers-reduced-motion: reduce) {
-  .page-enter { animation: none; }
-  .tab-btn, .tab-btn:active { transition: none; transform: none; }
-}
-
 .glass-card {
-  background: linear-gradient(180deg, rgba(167,139,250,0.08), rgba(255,255,255,0.016));
-  border: 1px solid rgba(167,139,250,0.17);
+  background: linear-gradient(180deg, rgba(239,68,68,0.062), rgba(255,255,255,0.015));
+  border: 1px solid rgba(248,113,113,0.17);
   border-radius: 16px;
   backdrop-filter: blur(12px);
 }
 .glass-soft {
-  background: linear-gradient(180deg, rgba(167,139,250,0.05), rgba(255,255,255,0.012));
-  border: 1px solid rgba(167,139,250,0.12);
+  background: linear-gradient(180deg, rgba(239,68,68,0.038), rgba(255,255,255,0.012));
+  border: 1px solid rgba(248,113,113,0.11);
   border-radius: 16px;
+}
+
+/* ---- splash intro ------------------------------------------------------- */
+.splash {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  background:
+    radial-gradient(640px 420px at 50% 42%, rgba(220,38,38,0.13), transparent 68%),
+    radial-gradient(1100px 700px at 50% 120%, rgba(127,10,20,0.16), transparent 60%),
+    #050506;
+  opacity: 1; transition: opacity 480ms ease;
+}
+.splash.splash-out { opacity: 0; pointer-events: none; }
+.splash-inner {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  transition: transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.splash-out .splash-inner { transform: scale(1.035); }
+
+@keyframes splashLetter {
+  from { opacity: 0; transform: translateY(16px); filter: blur(10px); }
+  to   { opacity: 1; transform: none;             filter: blur(0); }
+}
+.splash-word {
+  display: flex;
+  font-family: 'Geist Mono', monospace;
+  font-weight: 700;
+  font-size: clamp(36px, 9vw, 62px);
+  letter-spacing: 0.3em;
+  margin-right: -0.3em; /* recentre: tracking adds a trailing gap */
+  color: #ECECEE;
+}
+.splash-word span {
+  animation: splashLetter 620ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.splash-word .splash-x {
+  background: linear-gradient(150deg, #FCA5A5, #EF4444 55%, #B91C1C);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 18px rgba(239,68,68,0.45));
+}
+
+@keyframes splashLine { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.splash-line {
+  width: 148px; height: 2px; border-radius: 1px;
+  background: linear-gradient(90deg, transparent, #EF4444, transparent);
+  box-shadow: 0 0 16px rgba(239,68,68,0.55);
+  animation: splashLine 700ms cubic-bezier(0.2, 0.8, 0.2, 1) 480ms both;
+}
+
+@keyframes splashFade { from { opacity: 0; } to { opacity: 1; } }
+.splash-sub {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px; letter-spacing: 0.32em; margin-right: -0.32em;
+  color: #6B6B76; text-transform: uppercase;
+  animation: splashFade 600ms ease 760ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter { animation: none; }
+  .tab-btn, .tab-btn:active { transition: none; transform: none; }
+  .splash-word span, .splash-line, .splash-sub { animation: none; }
+  .splash-inner, .splash-out .splash-inner { transition: none; transform: none; }
 }

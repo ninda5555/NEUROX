@@ -7,7 +7,7 @@ const REASON_LABELS = {
   NO_HISTORY: 'No price history yet', T2T: 'Trade-to-Trade series',
 }
 const reasonLabel = (r) => REASON_LABELS[r] || (r?.startsWith('ASM') ? `ASM (${r.slice(4)})` : r?.startsWith('GSM') ? `GSM stage ${r.slice(4)}` : r?.startsWith('SERIES_') ? `Series ${r.slice(7)}` : r)
-const reasonColor = (r) => r?.startsWith('ASM') || r?.startsWith('GSM') ? '#A5B4FC' : r === 'PRICE_LT_20' || r === 'LISTED_LT_60' ? '#818CF8' : '#FB7185'
+const reasonColor = (r) => r?.startsWith('ASM') || r?.startsWith('GSM') ? '#FBBF24' : r === 'PRICE_LT_20' || r === 'LISTED_LT_60' ? '#F59E0B' : '#FB7185'
 
 export default function Universe() {
   const [data, setData] = useState(null)
@@ -33,7 +33,7 @@ export default function Universe() {
         <span style={{ color: survOk ? '#34D399' : '#FB7185' }}>{survOk ? '✓' : '⚠'}</span>
         <span className="text-[12.5px] text-soft">
           {survOk
-            ? <>Surveillance list current — NSE consolidated file dated <span className="font-mono text-violet3">{surv.date}</span>. GSM (all stages) and ASM (ST &amp; LT, stage ≥ 1) excluded by default.</>
+            ? <>Surveillance list current — NSE consolidated file dated <span className="font-mono text-mint">{surv.date}</span>. GSM (all stages) and ASM (ST &amp; LT, stage ≥ 1) excluded by default.</>
             : surv?.date
               ? <>Surveillance list STALE (dated <span className="font-mono text-rose">{surv.date}</span>) — {surv.error}</>
               : <>NO SURVEILLANCE LIST HAS EVER BEEN FETCHED — this universe is UNSCREENED for GSM/ASM. Shown loudly, never silently.</>}

@@ -45,11 +45,11 @@ export default function Model({ mode }) {
             <svg width="100%" height="230" viewBox="0 0 260 230" className="block">
               <rect x="34" y="8" width="212" height="188" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
               <line x1="34" y1="196" x2="246" y2="8" stroke="rgba(255,255,255,0.18)" strokeWidth="1" strokeDasharray="4 3" />
-              <path d={calibPath} fill="none" stroke="#A78BFA" strokeWidth="2" strokeLinejoin="round" />
-              {pts.map((p, i) => <circle key={i} cx={cX(p[0])} cy={cY(p[1])} r="3" fill="#A78BFA" />)}
-              <text x="34" y="216" fill="#6B7488" fontSize="9" fontFamily="monospace">{dmin.toFixed(2)}</text>
-              <text x="222" y="216" fill="#6B7488" fontSize="9" fontFamily="monospace">{dmax.toFixed(2)}</text>
-              <text x="6" y="14" fill="#6B7488" fontSize="9" fontFamily="monospace">real</text>
+              <path d={calibPath} fill="none" stroke="#F87171" strokeWidth="2" strokeLinejoin="round" />
+              {pts.map((p, i) => <circle key={i} cx={cX(p[0])} cy={cY(p[1])} r="3" fill="#F87171" />)}
+              <text x="34" y="216" fill="#6B6B76" fontSize="9" fontFamily="monospace">{dmin.toFixed(2)}</text>
+              <text x="222" y="216" fill="#6B6B76" fontSize="9" fontFamily="monospace">{dmax.toFixed(2)}</text>
+              <text x="6" y="14" fill="#6B6B76" fontSize="9" fontFamily="monospace">real</text>
             </svg>
           </div>
         </div>
@@ -63,11 +63,11 @@ export default function Model({ mode }) {
                   const rosey = f.rule === 'inconsistent_across_time'
                   return (
                     <div key={i} className="flex gap-3 px-4 py-[13px] rounded-xl"
-                         style={{ background: rosey ? 'rgba(244,63,94,0.08)' : 'rgba(129,140,248,0.07)',
-                                  border: `1px solid ${rosey ? 'rgba(244,63,94,0.28)' : 'rgba(129,140,248,0.22)'}` }}>
+                         style={{ background: rosey ? 'rgba(244,63,94,0.08)' : 'rgba(251,191,36,0.07)',
+                                  border: `1px solid ${rosey ? 'rgba(244,63,94,0.28)' : 'rgba(251,191,36,0.22)'}` }}>
                       <span className="text-base leading-none">⚠</span>
                       <div>
-                        <div className="text-[13px] font-semibold" style={{ color: rosey ? '#FB7185' : '#C7D2FE' }}>
+                        <div className="text-[13px] font-semibold" style={{ color: rosey ? '#FB7185' : '#FDE68A' }}>
                           {f.rule.replaceAll('_', ' ')}
                         </div>
                         <div className="text-xs text-soft mt-[3px] leading-normal">{f.detail}</div>
@@ -108,7 +108,7 @@ export default function Model({ mode }) {
                         <td className="px-3 py-[11px] font-mono text-[11.5px] text-softer">{f.test_start} → {f.test_end}</td>
                         <td className="px-3 py-[11px] text-right font-mono text-xs text-body">{fmtIn(f.n_signals)}</td>
                         <td className="px-3 py-[11px] text-right font-mono text-[12.5px] font-medium"
-                            style={{ color: p == null ? '#6B7488' : bad ? '#FB7185' : p < 0.5 ? '#C7D2FE' : '#34D399' }}>
+                            style={{ color: p == null ? '#6B6B76' : bad ? '#FB7185' : p < 0.5 ? '#FDE68A' : '#34D399' }}>
                           {p == null ? '— (no signals)' : fmt(p)}
                         </td>
                         <td className="px-3 py-[11px] text-right font-mono text-xs text-body">{f.calibration_err == null ? '—' : fmt(f.calibration_err, 3)}</td>
@@ -130,7 +130,7 @@ export default function Model({ mode }) {
                   <div key={name} className="flex items-center gap-2.5">
                     <span className="font-mono text-[11px] text-softer flex-1 truncate">{name}</span>
                     <div className="w-[70px] h-[5px] bg-white/5 rounded-[3px]">
-                      <div className="h-full rounded-[3px] bg-violet2" style={{ width: `${Math.abs(v) / icMax * 100}%` }} />
+                      <div className="h-full rounded-[3px] bg-red2" style={{ width: `${Math.abs(v) / icMax * 100}%` }} />
                     </div>
                     <span className="font-mono text-[11px] text-body w-[42px] text-right">{v > 0 ? '+' : ''}{fmt(v, 3)}</span>
                   </div>
@@ -143,7 +143,7 @@ export default function Model({ mode }) {
                 {data.history.map((h) => (
                   <div key={h.model_id} className="flex gap-2.5 items-start">
                     <span className="w-[7px] h-[7px] rounded-full mt-[5px] shrink-0"
-                          style={{ background: h.is_active ? '#34D399' : '#5A6478' }} />
+                          style={{ background: h.is_active ? '#34D399' : '#5A5A64' }} />
                     <div>
                       <div className="font-mono text-[11.5px] text-body">{h.model_id}</div>
                       <div className="text-[11px] text-dim mt-px">

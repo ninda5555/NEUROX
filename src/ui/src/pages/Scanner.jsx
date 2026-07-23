@@ -61,7 +61,7 @@ function Card({ c }) {
       <div className="px-[18px] pb-3.5 flex flex-col gap-[7px]">
         {c.shap3.map((s, i) => (
           <div key={i} className="flex gap-2 text-[12.5px] text-body leading-[1.45]">
-            <span className="text-violet2 shrink-0">·</span><span>{s}</span>
+            <span className="text-red2 shrink-0">·</span><span>{s}</span>
           </div>
         ))}
       </div>
@@ -81,8 +81,8 @@ function Card({ c }) {
         {c.flags?.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {c.flags.map((f, i) => (
-              <span key={i} className="text-[10.5px] text-perilight px-[9px] py-[3px] rounded-md"
-                    style={{ background: 'rgba(129,140,248,0.1)', border: '1px solid rgba(129,140,248,0.22)' }}>{f}</span>
+              <span key={i} className="text-[10.5px] text-amberlight px-[9px] py-[3px] rounded-md"
+                    style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.22)' }}>{f}</span>
             ))}
           </div>
         )}
@@ -109,8 +109,8 @@ function Card({ c }) {
             ))}
           </div>
           {c.regime && (
-            <div className="mt-4 px-[13px] py-[11px] rounded-[10px] text-xs text-violet3 leading-normal"
-                 style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.16)' }}>
+            <div className="mt-4 px-[13px] py-[11px] rounded-[10px] text-xs text-red3 leading-normal"
+                 style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.14)' }}>
               <span className="text-dim">Regime context · </span>
               India VIX {fmt(c.regime.vix, 1)} ({c.regime.vix_trend}) · NIFTY {c.regime.nifty_vs_50dma > 0 ? 'above' : 'below'} 50-DMA · breadth {fmt(c.regime.breadth_adv_dec, 2)}
             </div>

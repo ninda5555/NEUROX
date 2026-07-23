@@ -21,25 +21,25 @@ export default function StatusStrip({ status }) {
         <span className="font-mono text-ink font-medium">{fmtIn(uni?.included)}</span>
         <span className="text-dimmer">·</span>
         <span className="text-dim">surveillance list</span>
-        <span className="font-mono" style={{ color: surv?.date && !surv?.error ? '#C4B5FD' : '#FB7185' }}>
+        <span className="font-mono" style={{ color: surv?.date && !surv?.error ? '#ECECEE' : '#FB7185' }}>
           {surv?.date || 'NEVER FETCHED — UNSCREENED'}
         </span>
         {surv?.date && surv?.error ? <span className="text-rose text-[11px]">STALE</span> : null}
       </div>
 
       <div className="shrink-0 max-w-[86vw] md:max-w-none md:shrink md:flex-1 md:min-w-[260px] flex items-center gap-[9px] px-[13px] py-2 md:py-1.5 rounded-xl md:rounded-lg text-xs"
-           style={{ background: 'rgba(129,140,248,0.06)', border: '1px solid rgba(129,140,248,0.18)' }}>
-        <span className="w-1.5 h-1.5 rounded-full bg-peri" />
-        <span className="text-perilight">{regimeText}</span>
+           style={{ background: 'rgba(239,68,68,0.055)', border: '1px solid rgba(239,68,68,0.16)' }}>
+        <span className="w-1.5 h-1.5 rounded-full bg-red2" />
+        <span className="text-red3">{regimeText}</span>
       </div>
 
       <div className="shrink-0 flex items-center gap-2 px-3 py-2 md:py-1.5 rounded-xl md:rounded-lg text-xs"
            style={{
-             background: halted ? 'rgba(244,63,94,0.08)' : warn ? 'rgba(129,140,248,0.07)' : 'rgba(255,255,255,0.03)',
-             border: `1px solid ${halted ? 'rgba(244,63,94,0.28)' : warn ? 'rgba(129,140,248,0.22)' : 'rgba(255,255,255,0.07)'}`,
+             background: halted ? 'rgba(244,63,94,0.08)' : warn ? 'rgba(251,191,36,0.07)' : 'rgba(255,255,255,0.03)',
+             border: `1px solid ${halted ? 'rgba(244,63,94,0.28)' : warn ? 'rgba(251,191,36,0.22)' : 'rgba(255,255,255,0.07)'}`,
            }}>
         <span className="text-dim">Daily loss limit</span>
-        <span className="font-semibold" style={{ color: halted ? '#FB7185' : warn ? '#C7D2FE' : '#34D399' }}>
+        <span className="font-semibold" style={{ color: halted ? '#FB7185' : warn ? '#FDE68A' : '#34D399' }}>
           {halted ? 'HALTED — 3% hit' : warn ? `WARNING · ${loss?.pct_of_capital?.toFixed(1)}% today` : `OK · ${loss ? loss.pct_of_capital.toFixed(1) : '0.0'}% today`}
         </span>
       </div>
