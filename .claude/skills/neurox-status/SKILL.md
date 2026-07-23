@@ -22,6 +22,18 @@ curl -sSf http://127.0.0.1:8000/api/status
 ls -la data/backups/ 2>/dev/null
 ```
 
+   For pipeline-freshness questions ("why no signals?"), also ask for:
+
+```bash
+journalctl -u neurox-scheduler --since -48h --no-pager | grep -E "heartbeat|intraday pass|skipped|failed" | tail -30
+```
+
+   A healthy box logs an hourly `heartbeat:` line — its dates (last 1d bar,
+   universe, surveillance) are the freshness ground truth, and `intraday pass`
+   lines appear every ~20 min during market hours. "skipped: no valid token"
+   means the morning re-auth is missing — signals resume automatically on the
+   next pass after re-auth.
+
 2. Read the pasted-back output and report, in plain language, one line per check:
    - **Code version**: does the top commit match what's expected? (compare against `git log --oneline -3` in this repo if unsure)
    - **Services**: both `neurox-dashboard` and `neurox-scheduler` must say `active (running)`. Anything else (`failed`, `inactive`, restarting in a loop) is a real problem — pull the `journalctl -u <service> -n 50 --no-pager` output before diagnosing further.

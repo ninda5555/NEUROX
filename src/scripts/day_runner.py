@@ -98,10 +98,14 @@ def one_pass(cfg, conn, store, syms, client, show_top=True):
              f"entry {c['entry']:.2f} stop {c['stop']:.2f} target {c['target']:.2f}")
     if not cards and show_top:
         top = top_candidates(conn, store, cfg, syms, asof)
-        _log(f"no emission (best {top[0][0]:.3f} < {cfg['signals.confidence_threshold']}). "
-             "top watched:")
-        for p, sym, side in top[:6]:
-            _log(f"    {sym.split(':')[-1]:<14} {side:<5} {p:.3f}")
+        if not top:
+            _log("no emission: no symbol has a bar for today yet "
+                 "(market holiday, or the feed hasn't produced 5-min bars)")
+        else:
+            _log(f"no emission (best {top[0][0]:.3f} < {cfg['signals.confidence_threshold']}). "
+                 "top watched:")
+            for p, sym, side in top[:6]:
+                _log(f"    {sym.split(':')[-1]:<14} {side:<5} {p:.3f}")
     if asof.time() >= INTRADAY_SQUAREOFF:
         evaluate_pending(conn, store)
         n = settle_paper_trades(conn, store, cfg["costs.per_side_pct"], tracker)

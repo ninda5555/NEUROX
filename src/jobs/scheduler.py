@@ -11,6 +11,7 @@ surveillance fetch, a Fyers timeout) logs and the rest of the day proceeds.
 
 from __future__ import annotations
 
+import datetime as dt
 import functools
 import logging
 
@@ -28,13 +29,16 @@ from src.journal.outcomes import evaluate_pending
 from src.models.drift import psi_check
 from src.journal.paper import settle_paper_trades
 from src.signals.livescan import swing_pass
-from src.timeutil import IST
+from src.timeutil import IST, MARKET_CLOSE, now_ist
 from src.universe.earnings import fetch_earnings_calendar
 from src.universe.master import (build_universe, eq_candidate_symbols,
                                  latest_included_symbols)
 from src.universe.sectors import update_sectors
 
 log = logging.getLogger(__name__)
+
+INDEX_SYMBOLS = ["NSE:NIFTY50-INDEX", "NSE:NIFTYBANK-INDEX", "NSE:INDIAVIX-INDEX"]
+INTRADAY_FIRST_PASS = dt.time(9, 25)   # opening-range bars need to exist first
 
 
 def _safe(fn):
@@ -72,6 +76,85 @@ def _client(cfg, conn):
     return FyersClient(cfg, conn, access_token=auth.get_valid_token(cfg))
 
 
+def job_intraday_scan():
+    """Every 20 min, 09:25–15:30 IST Mon–Fri: the in-market pass. Tops up
+    today's 5-min bars over REST, runs the standard emission gate, journals
+    real signals, runs the 15:15+ square-off sweep. This is day_runner's
+    one_pass wired into the unattended scheduler — without it a VPS deploy
+    produces no intraday signals at all."""
+    t = now_ist().time()
+    if not (INTRADAY_FIRST_PASS <= t <= MARKET_CLOSE):
+        return
+    cfg, conn, store = _ctx()
+    try:
+        client = _client(cfg, conn)
+    except auth.NeedsReauth:
+        log.error("intraday pass skipped: no valid token — complete the "
+                  "morning re-auth; the next pass picks up automatically")
+        return
+    syms = latest_included_symbols(conn)
+    if not syms:
+        log.error("intraday pass skipped: universe empty — run the bootstrap")
+        return
+    dbm.set_state(conn, "ws_status", "rest-poll")
+    from src.scripts.day_runner import one_pass
+    cards = one_pass(cfg, conn, store, syms, client)
+    log.info("intraday pass done: %d signal(s) emitted", len(cards))
+
+
+def job_morning_catchup():
+    """08:50 IST Mon–Fri: pre-market self-heal. If yesterday's evening jobs
+    were skipped (no token, box down), daily bars and the universe would be
+    stale and every scan that day would quietly emit nothing — this closes
+    that gap right after the 06:00 re-auth instead of waiting for 20:30."""
+    cfg, conn, store = _ctx()
+    try:
+        client = _client(cfg, conn)
+    except auth.NeedsReauth:
+        log.error("morning catch-up skipped: no valid token — complete the "
+                  "morning re-auth")
+        return
+    syms = latest_included_symbols(conn)
+    if syms:
+        backfill_many(client, store, syms + INDEX_SYMBOLS, "1d", days=7)
+    today = now_ist().date().isoformat()
+    row = conn.execute("SELECT MAX(snap_date) FROM universe_snapshot").fetchone()
+    snap = row[0] if row else None
+    if snap is None or snap < today:
+        s = build_universe(conn, cfg, store=store, client=client)
+        log.info("morning catch-up rebuilt stale universe (was %s): "
+                 "%d included / %d scanned", snap, s.included, s.scanned)
+    log.info("morning catch-up done")
+
+
+def job_heartbeat():
+    """Hourly, every day: one line of ground truth in the journal so silence
+    is impossible — a stalled pipeline shows up as a stale date here, not as
+    an empty log the operator has to interpret (§17.7 spirit)."""
+    cfg, conn, store = _ctx()
+    try:
+        auth.get_valid_token(cfg)
+        token = "valid"
+    except Exception:
+        token = "EXPIRED"
+    row = conn.execute("SELECT MAX(snap_date) FROM universe_snapshot").fetchone()
+    snap = (row[0] if row else None) or "none"
+    row = conn.execute(
+        "SELECT surveillance_src_date FROM universe_snapshot WHERE snap_date=? "
+        "AND surveillance_src_date IS NOT NULL LIMIT 1", (snap,)).fetchone()
+    surv = (row[0] if row else None) or "none"
+    nifty = store.read_candles(
+        "1d", "NSE:NIFTY50-INDEX",
+        start=now_ist() - dt.timedelta(days=14), end=now_ist())
+    last_bar = str(nifty["ts"].iloc[-1].date()) if len(nifty) else "none"
+    today = now_ist().date().isoformat()
+    n_sig = conn.execute("SELECT COUNT(*) FROM signals WHERE ts LIKE ?",
+                         (today + "%",)).fetchone()[0]
+    log.info("heartbeat: token %s | last 1d bar %s | universe %s "
+             "(surveillance %s) | signals today %d",
+             token, last_bar, snap, surv, n_sig)
+
+
 def job_swing_scan():
     """15:50 IST: post-close swing signals for next-day entry."""
     cfg, conn, store = _ctx()
@@ -83,10 +166,15 @@ def job_candle_topup():
     """16:20 IST: pull the day's final candles so outcomes settle on
     exchange-confirmed bars (WS bars get corrected here too)."""
     cfg, conn, store = _ctx()
-    client = _client(cfg, conn)
+    try:
+        client = _client(cfg, conn)
+    except auth.NeedsReauth:
+        log.error("candle top-up skipped: no valid token — outcomes/paper "
+                  "settle on the next run with a token")
+        return
+    dbm.set_state(conn, "ws_status", "offline")   # market closed, polling done
     syms = latest_included_symbols(conn)
-    backfill_many(client, store, syms + ["NSE:NIFTY50-INDEX",
-                  "NSE:NIFTYBANK-INDEX", "NSE:INDIAVIX-INDEX"], "1d", days=7)
+    backfill_many(client, store, syms + INDEX_SYMBOLS, "1d", days=7)
     backfill_many(client, store, syms + ["NSE:NIFTY50-INDEX"], "5min", days=3)
     n = evaluate_pending(conn, store)
     settle_paper_trades(conn, store, cfg["costs.per_side_pct"])
@@ -127,7 +215,12 @@ def job_daily_backfill_universe_candles():
     """21:00 IST: keep daily history complete for every -EQ candidate so the
     liquidity filter never starves."""
     cfg, conn, store = _ctx()
-    client = _client(cfg, conn)
+    try:
+        client = _client(cfg, conn)
+    except auth.NeedsReauth:
+        log.error("universe-candle backfill skipped: no valid token — the "
+                  "morning catch-up heals daily bars after the next re-auth")
+        return
     backfill_many(client, store, eq_candidate_symbols(conn), "1d", days=7)
 
 
@@ -173,16 +266,19 @@ def job_weekly_digest():
         log.info("digest %s: paper %s | drift %s", mode, d["paper"], d["drift"])
 
 
-def main() -> None:
-    logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    cfg = load_config()
-    from src.logsafe import install_redaction
-    install_redaction(cfg)  # §12: secrets never reach the journal (T8)
+def build_scheduler(cfg) -> BlockingScheduler:
     s = BlockingScheduler(timezone=IST)
     wd = "mon-fri"
     s.add_job(_safe(job_daily_auto_login),
               CronTrigger(day_of_week=wd, hour=6, minute=0, timezone=IST))
+    s.add_job(_safe(job_morning_catchup),
+              CronTrigger(day_of_week=wd, hour=8, minute=50, timezone=IST))
+    # */20 over hours 9–15 with the in-job 09:25–15:30 gate → passes
+    # 09:40 … 15:20; the 15:20 pass runs the square-off sweep (≥ 15:15).
+    s.add_job(_safe(job_intraday_scan),
+              CronTrigger(day_of_week=wd, hour="9-15", minute="*/20", timezone=IST))
+    s.add_job(_safe(job_heartbeat),
+              CronTrigger(minute=10, timezone=IST))  # hourly, every day
     s.add_job(_safe(job_swing_scan), CronTrigger(day_of_week=wd, hour=15, minute=50, timezone=IST))
     s.add_job(_safe(job_candle_topup), CronTrigger(day_of_week=wd, hour=16, minute=20, timezone=IST))
     s.add_job(_safe(job_universe_rebuild), CronTrigger(day_of_week=wd, hour=20, minute=30, timezone=IST))
@@ -200,10 +296,21 @@ def main() -> None:
         retrain_desc = "retrain Sat 10:00"
     s.add_job(_safe(job_weekly_digest), CronTrigger(day_of_week="fri", hour=16, minute=45, timezone=IST))
 
-    log.info("scheduler up (IST): auto-login 06:00%s · swing 15:50 · top-up 16:20 "
-             "· universe 20:30 · backfill 21:00 · backup 21:30 · %s · digest Fri 16:45",
+    log.info("scheduler up (IST): auto-login 06:00%s · catch-up 08:50 · "
+             "intraday scan */20 09:25-15:30 · heartbeat hourly · swing 15:50 "
+             "· top-up 16:20 · universe 20:30 · backfill 21:00 · backup 21:30 "
+             "· %s · digest Fri 16:45",
              " (auto_login off)" if not cfg["fyers.auto_login"] else "", retrain_desc)
-    s.start()
+    return s
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    cfg = load_config()
+    from src.logsafe import install_redaction
+    install_redaction(cfg)  # §12: secrets never reach the journal (T8)
+    build_scheduler(cfg).start()
 
 
 if __name__ == "__main__":
