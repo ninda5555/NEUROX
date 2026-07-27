@@ -4,6 +4,7 @@ import Rail from './components/Rail.jsx'
 import MobileNav from './components/MobileNav.jsx'
 import TopBar from './components/TopBar.jsx'
 import StatusStrip from './components/StatusStrip.jsx'
+import DataHealthBanner from './components/DataHealthBanner.jsx'
 import Splash from './components/Splash.jsx'
 import Scanner from './pages/Scanner.jsx'
 import Search from './pages/Search.jsx'
@@ -70,6 +71,7 @@ export default function App() {
         <div className="flex-1 min-w-0 flex flex-col pb-[70px] md:pb-0"
              onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
           <TopBar mode={mode} setMode={setMode} status={status} />
+          <DataHealthBanner health={status?.data_health} />
           <StatusStrip status={status} />
           {isPreview() && previewNote() && (
             <div className="mx-4 md:mx-7 mb-2 px-4 py-2 rounded-lg text-[12px] text-amberlight flex items-center gap-2"

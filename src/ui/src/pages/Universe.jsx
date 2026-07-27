@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
 import { getUniverse, fmt, fmtIn } from '../api.js'
+import { useApi } from '../hooks.js'
+import { PageSkeleton, PageError } from '../components/PageState.jsx'
 
 const REASON_LABELS = {
   LOW_TURNOVER: 'Low turnover (< ₹5cr)', ILLIQUID_GAPS: 'Illiquid (gaps in 20d)',
@@ -10,8 +11,10 @@ const reasonLabel = (r) => REASON_LABELS[r] || (r?.startsWith('ASM') ? `ASM (${r
 const reasonColor = (r) => r?.startsWith('ASM') || r?.startsWith('GSM') ? '#FBBF24' : r === 'PRICE_LT_20' || r === 'LISTED_LT_60' ? '#F59E0B' : '#FB7185'
 
 export default function Universe() {
-  const [data, setData] = useState(null)
-  useEffect(() => { getUniverse().then(setData).catch(() => {}) }, [])
+  const { data, error, loading } = useApi(getUniverse, [])
+  if (loading) return <PageSkeleton />
+  if (error) return <PageError message="Couldn't load the universe."
+                               detail={error.message ? `HTTP ${error.message}` : String(error)} />
   if (!data) return null
   const reasons = Object.entries(data.reasons || {})
   const maxN = Math.max(...reasons.map(([, n]) => n), 1)

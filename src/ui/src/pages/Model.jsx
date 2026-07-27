@@ -1,13 +1,17 @@
-import { useEffect, useState } from 'react'
 import { getModel, fmt, fmtIn } from '../api.js'
+import { useApi } from '../hooks.js'
+import { PageSkeleton, PageError } from '../components/PageState.jsx'
 
 export default function Model({ mode }) {
-  const [data, setData] = useState(null)
-  useEffect(() => { getModel(mode).then(setData).catch(() => {}) }, [mode])
+  const { data, error, loading } = useApi(() => getModel(mode), [mode])
+  if (loading) return <PageSkeleton />
+  if (error) return <PageError message="Couldn't load the model page."
+                               detail={error.message ? `HTTP ${error.message}` : String(error)} />
   if (!data) return null
   const m = data.active
   if (!m) return <div className="text-dim text-sm">No trained model for {mode} yet.</div>
 
+  const withSignals = data.folds.filter((f) => f.n_signals > 0).length
   const pts = (data.calibration?.curve || [])
   const dmin = 0.2, dmax = 0.9
   const cX = (p) => 34 + (Math.min(Math.max(p, dmin), dmax) - dmin) / (dmax - dmin) * 212
@@ -87,7 +91,10 @@ export default function Model({ mode }) {
           <div className="glass-soft overflow-hidden">
             <div className="px-[18px] pt-[15px] pb-3 flex items-baseline justify-between">
               <div className="text-sm font-semibold">Purged walk-forward CV — all folds</div>
-              <div className="text-[11.5px] text-dim">precision {fmt(m.precision_mean)} ± {fmt(m.precision_std, 3)}</div>
+              <div className="text-[11.5px] text-dim">
+                precision {fmt(m.precision_mean)} ± {fmt(m.precision_std, 3)}
+                <span className="text-dimmer"> (N={withSignals} of {data.folds.length} folds fired ≥30 signals)</span>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse min-w-[560px]">

@@ -8,6 +8,7 @@ consumer — every number it shows comes from the journal/DB, never invented.
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import json
 import os
 from pathlib import Path
@@ -22,8 +23,9 @@ from src.config import load_config
 from src.data.store import CandleStore
 from src.fyers import auth
 from src.journal.journal import list_signals
+from src.jobs.health import PROBE_KEYS, read_health
 from src.risk.loss_limit import DayRiskTracker
-from src.timeutil import ist_date, now_ist
+from src.timeutil import MARKET_CLOSE, ist_date, now_ist, parse_iso
 
 cfg = load_config()
 from src.logsafe import install_redaction  # noqa: E402
@@ -116,7 +118,9 @@ def status():
     return {
         "now_ist": now_ist().isoformat(timespec="seconds"),
         "token": tok,
-        "ws_feed": dbm.get_state(c, "ws_status", "offline"),
+        "ws_feed": dbm.get_state(c, "ws_status", "offline"),  # raw value, kept for debugging
+        "feed": _feed_state(c),
+        "data_health": _data_health(c),
         "universe": uni,
         "surveillance": {"date": surv_date, "error": surv_err,
                          "stale": bool(surv_err) or surv_date != (snap or surv_date)},
@@ -140,6 +144,79 @@ def _thresholds(regime: dict | None) -> dict:
             "current_bucket": bucket,
             "effective": round(base + bumps[bucket], 4),
             "tightened": bumps[bucket] > 0}
+
+
+# Mirrors scheduler.py's INTRADAY_FIRST_PASS (9:25) plus grace for the pass
+# to actually complete before we call the poll loop "stalled" rather than
+# just "hasn't started yet".
+_POLL_SHOULD_BE_LIVE_BY = dt.time(9, 35)
+_POLL_STALE_AFTER_MIN = 30  # a pass runs every 20 min; 30 without a refresh means it stopped
+
+
+def _feed_state(c) -> dict:
+    """The dashboard's real-time data path is REST-polling (CLAUDE.md §12
+    outage fix, 23-Jul-2026), not a persistent WebSocket — job_intraday_scan
+    sets ws_status='rest-poll' while it's the active data source for the
+    session, 'offline' once the session's done. This turns that raw value
+    (plus how long ago it was last touched) into a market-hours-aware read,
+    so "no signal right now" reads correctly as expected-quiet outside
+    trading hours rather than as a permanently-broken indicator."""
+    row = c.execute("SELECT value, updated_at FROM app_state WHERE key='ws_status'").fetchone()
+    ws = row["value"] if row else "offline"
+    now = now_ist()
+    market_hours = now.weekday() < 5 and _POLL_SHOULD_BE_LIVE_BY <= now.time() <= MARKET_CLOSE
+    if ws == "rest-poll" and row and row["updated_at"]:
+        age_min = int((now - parse_iso(row["updated_at"])).total_seconds() // 60)
+        if age_min > _POLL_STALE_AFTER_MIN:
+            return {"state": "stalled", "label": "Stalled",
+                    "detail": f"last poll {age_min} min ago — should refresh every 20"}
+        return {"state": "polling", "label": "Live · polling", "detail": None}
+    if market_hours:
+        return {"state": "stalled", "label": "Stalled", "detail": None}
+    return {"state": "idle", "label": "Idle · after hours", "detail": None}
+
+
+def _data_health(c) -> dict:
+    """Synthesizes the 3 upstream probes (src.jobs.health) into ONE clear
+    plain-English read, so the UI never has to guess "quiet market" vs
+    "broken feed" itself — surfaced, never silent (§17.7 spirit). Raised by
+    a real 2026-07-27 incident: History API returning -403 while quotes
+    worked fine, with nothing on the dashboard to show it."""
+    probes = read_health(c)
+    now = now_ist()
+    market_hours = now.weekday() < 5 and _POLL_SHOULD_BE_LIVE_BY <= now.time() <= MARKET_CLOSE
+    down = [k for k in PROBE_KEYS if probes.get(k) and probes[k]["ok"] is False]
+
+    if down:
+        lead = "history" if "history" in down else down[0]
+        p = probes[lead]
+        label = {"profile": "Fyers profile/login", "quotes": "Fyers live quotes",
+                 "history": "Fyers History"}[lead]
+        if lead == "history":
+            try:
+                bars = store().read_candles(
+                    "1d", "NSE:NIFTY50-INDEX",
+                    start=now - dt.timedelta(days=14), end=now)
+                frozen_at = str(bars["ts"].iloc[-1].date()) if len(bars) else "unknown"
+            except Exception:
+                frozen_at = "unknown"
+            consequence = f"candles frozen at {frozen_at}, new predictions are paused"
+        else:
+            consequence = "some dashboard figures may be stale"
+        extra = (f" ({len(down) - 1} other upstream check(s) also failing — see below.)"
+                 if len(down) > 1 else "")
+        banner = f"{label} API failing — {p['message']}. {consequence}.{extra}"
+        return {"severity": "down", "banner": banner, "probes": probes}
+
+    checked = [probes[k]["checked_at"] for k in PROBE_KEYS if probes.get(k)]
+    if not checked:
+        return {"severity": "unknown", "banner": None, "probes": probes}
+    stalest_min = int((now - parse_iso(min(checked))).total_seconds() // 60)
+    if market_hours and stalest_min > 90:
+        return {"severity": "stale", "probes": probes,
+                "banner": f"Upstream checks haven't refreshed in {stalest_min} min during "
+                          "market hours — the scheduler process may be down."}
+    return {"severity": "ok", "banner": None, "probes": probes}
 
 
 def _spark(symbol: str, mode: str) -> list[float]:
@@ -185,11 +262,19 @@ def scanner(mode: str = "INTRADAY"):
             "flags": json.loads(s["risk_flags"] or "[]"),
             "holding": s["holding_stmt"], "explanation": s["explanation"],
         })
+    empty_reason = None
+    if not cards:
+        health = _data_health(c)
+        if health["banner"]:
+            empty_reason = ("No setups shown because upstream data is broken right now — "
+                            "this is NOT the model saying 'no trade', it has no fresh data "
+                            f"to score: {health['banner']}")
+        else:
+            empty_reason = ("Nothing cleared the confidence and risk gates this scan. The "
+                            "system saying 'no trade' is a valid, healthy outcome.")
     return {"mode": mode, "cards": cards, "signal_date": rows[0]["ts"][:10] if rows else None,
             "is_today": bool(rows) and rows[0]["ts"][:10] == today,
-            "empty_reason": None if cards else
-            "Nothing cleared the confidence and risk gates this scan. The "
-            "system saying 'no trade' is a valid, healthy outcome."}
+            "empty_reason": empty_reason}
 
 
 @app.get("/api/journal")
@@ -279,7 +364,13 @@ def universe():
     c = conn()
     snap = dbm.get_state(c, "universe_snap_date")
     if not snap:
-        return {"snap_date": None, "rows": [], "reasons": {}}
+        # same shape as the populated response below (scanned/included/
+        # surveillance included) so the UI never has to special-case a
+        # partial payload — a prior version of this omitted them, which
+        # left the page rendering undefined/NaN with no explanation
+        return {"snap_date": None, "rows": [], "reasons": {}, "scanned": 0, "included": 0,
+                "surveillance": {"date": dbm.get_state(c, "surveillance_file_date"),
+                                 "error": dbm.get_state(c, "surveillance_fetch_error") or ""}}
     rows = [dict(r) for r in c.execute(
         """SELECT u.*, i.nse_code, i.sector FROM universe_snapshot u
            LEFT JOIN instruments i ON i.symbol = u.symbol

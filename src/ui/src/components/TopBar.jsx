@@ -1,5 +1,12 @@
 export default function TopBar({ mode, setMode, status }) {
   const tokenOk = status?.token?.valid
+  // Real-time data here is REST-polling, not a persistent socket (CLAUDE.md
+  // §12) — "live" is never a value the backend actually writes, so this used
+  // to read "WS offline" permanently regardless of health. feed.state is the
+  // market-hours-aware read: polling (healthy, active) / idle (healthy,
+  // outside trading hours) / stalled (should be polling right now and isn't).
+  const feed = status?.feed || { state: 'idle', label: 'Idle' }
+  const feedColor = feed.state === 'polling' ? '#F87171' : feed.state === 'stalled' ? '#FB7185' : '#5A5A64'
   return (
     <header className="sticky top-0 z-40 backdrop-blur-[14px] border-b border-white/[0.07]"
             style={{ background: 'rgba(12,9,10,0.72)' }}>
@@ -33,12 +40,14 @@ export default function TopBar({ mode, setMode, status }) {
 
         <div className="ml-auto min-w-0 md:min-w-[220px] flex flex-wrap justify-end gap-2 md:gap-2.5 items-center">
           <div className="flex items-center gap-[7px] px-[11px] py-1.5 rounded-lg"
-               style={{ background: 'rgba(239,68,68,0.09)', border: '1px solid rgba(239,68,68,0.26)' }}>
-            <span className={`w-[7px] h-[7px] rounded-full ${status?.ws_feed === 'live' ? 'livepulse' : ''}`}
-                  style={{ background: status?.ws_feed === 'live' ? '#F87171' : '#5A5A64',
-                           boxShadow: status?.ws_feed === 'live' ? '0 0 8px rgba(248,113,113,0.9)' : 'none' }} />
-            <span className="text-[11px] text-red3 font-medium">
-              {status?.ws_feed === 'live' ? 'WS live' : 'WS offline'}
+               title={feed.detail || undefined}
+               style={{ background: feed.state === 'stalled' ? 'rgba(244,63,94,0.1)' : 'rgba(239,68,68,0.09)',
+                        border: `1px solid ${feed.state === 'stalled' ? 'rgba(244,63,94,0.3)' : 'rgba(239,68,68,0.26)'}` }}>
+            <span className={`w-[7px] h-[7px] rounded-full ${feed.state === 'polling' ? 'livepulse' : ''}`}
+                  style={{ background: feedColor,
+                           boxShadow: feed.state === 'polling' ? '0 0 8px rgba(248,113,113,0.9)' : 'none' }} />
+            <span className="text-[11px] font-medium" style={{ color: feed.state === 'stalled' ? '#FB7185' : '#FCA5A5' }}>
+              {feed.label}
             </span>
           </div>
           <div className="flex items-center gap-[7px] px-[11px] py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">

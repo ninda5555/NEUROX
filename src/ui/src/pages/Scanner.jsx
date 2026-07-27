@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getScanner, fmt, fmtIn, linePath } from '../api.js'
+import { useApi } from '../hooks.js'
+import { PageSkeleton, PageError } from '../components/PageState.jsx'
 
 function ShapBar({ item, extreme }) {
   const pos = item.shap >= 0
@@ -122,8 +124,7 @@ function Card({ c }) {
 }
 
 export default function Scanner({ mode }) {
-  const [data, setData] = useState(null)
-  useEffect(() => { getScanner(mode).then(setData).catch(() => {}) }, [mode])
+  const { data, error, loading } = useApi(() => getScanner(mode), [mode])
   const cards = data?.cards || []
   return (
     <div>
@@ -141,11 +142,14 @@ export default function Scanner({ mode }) {
           ? 'Signals fire only 09:30–14:30 IST, gated at ≥ 0.60 calibrated confidence after the risk engine approves. Ranked by confidence × liquidity — the full universe is never dumped.'
           : 'Generated post-close for next-day entry, gated at ≥ 0.60 calibrated confidence. Every card carries overnight/gap-risk disclosure; earnings proximity is flagged.'}
       </p>
-      {cards.length === 0 ? (
+      {loading ? <PageSkeleton /> : error ? (
+        <PageError message="Couldn't load setups."
+                   detail={error.message ? `HTTP ${error.message}` : String(error)} />
+      ) : cards.length === 0 ? (
         <div className="mt-10 px-10 py-16 text-center bg-white/[0.025] border border-dashed border-white/[0.12] rounded-[18px]">
           <div className="w-[52px] h-[52px] mx-auto mb-[18px] rounded-[14px] bg-white/5 flex items-center justify-center font-mono text-[22px] text-dim">—</div>
           <div className="text-[17px] font-semibold mb-2">No qualifying setups right now</div>
-          <div className="text-[13px] text-dim max-w-[440px] mx-auto leading-relaxed">{data?.empty_reason || 'Loading…'}</div>
+          <div className="text-[13px] text-dim max-w-[440px] mx-auto leading-relaxed">{data?.empty_reason}</div>
         </div>
       ) : (
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 400px), 1fr))' }}>

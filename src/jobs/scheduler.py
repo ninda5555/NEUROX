@@ -128,9 +128,15 @@ def job_morning_catchup():
 
 
 def job_heartbeat():
-    """Hourly, every day: one line of ground truth in the journal so silence
-    is impossible — a stalled pipeline shows up as a stale date here, not as
-    an empty log the operator has to interpret (§17.7 spirit)."""
+    """Hourly, every day (also run once at process startup — see main()): one
+    line of ground truth in the journal so silence is impossible — a stalled
+    pipeline shows up as stale dates here, not as an empty log the operator
+    has to interpret (§17.7 spirit).
+
+    Also runs the three upstream Fyers probes (profile/quotes/history)
+    SEPARATELY, so an incident like "History returns -403 while quotes work
+    fine" is visible as exactly that in the log and on the dashboard,
+    instead of just showing up as zero signals with no explanation."""
     cfg, conn, store = _ctx()
     try:
         auth.get_valid_token(cfg)
@@ -150,9 +156,22 @@ def job_heartbeat():
     today = now_ist().date().isoformat()
     n_sig = conn.execute("SELECT COUNT(*) FROM signals WHERE ts LIKE ?",
                          (today + "%",)).fetchone()[0]
+
+    upstream = "skipped (no valid token)"
+    if token == "valid":
+        from src.jobs.health import run_probes
+        try:
+            h = run_probes(conn, _client(cfg, conn))
+            upstream = " | ".join(
+                f"{k} {'OK' if h[k]['ok'] else 'FAIL(' + str(h[k]['message'])[:70] + ')'}"
+                for k in ("profile", "quotes", "history"))
+        except Exception:
+            log.exception("upstream health probes errored")
+            upstream = "probe run errored — see traceback above"
+
     log.info("heartbeat: token %s | last 1d bar %s | universe %s "
-             "(surveillance %s) | signals today %d",
-             token, last_bar, snap, surv, n_sig)
+             "(surveillance %s) | signals today %d | upstream: %s",
+             token, last_bar, snap, surv, n_sig, upstream)
 
 
 def job_swing_scan():
@@ -310,6 +329,9 @@ def main() -> None:
     cfg = load_config()
     from src.logsafe import install_redaction
     install_redaction(cfg)  # §12: secrets never reach the journal (T8)
+    log.info("startup self-check:")
+    _safe(job_heartbeat)()  # one immediate probe run so a bad deploy is
+                             # visible in the log at start, not an hour later
     build_scheduler(cfg).start()
 
 

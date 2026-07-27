@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getJournal, fmt, fmtIn } from '../api.js'
+import { useApi } from '../hooks.js'
+import { PageSkeleton, PageError } from '../components/PageState.jsx'
 
 const rColor = (v) => (v == null ? '#C7C7CE' : v < 0 ? '#FB7185' : v > 0 ? '#34D399' : '#C7C7CE')
 const ST = {
@@ -10,9 +12,11 @@ const ST = {
 }
 
 export default function Journal({ mode }) {
-  const [data, setData] = useState(null)
   const [q, setQ] = useState('')
-  useEffect(() => { getJournal(mode, q).then(setData).catch(() => {}) }, [mode, q])
+  const { data, error, loading } = useApi(() => getJournal(mode, q), [mode, q])
+  if (loading) return <PageSkeleton />
+  if (error) return <PageError message="Couldn't load the journal."
+                               detail={error.message ? `HTTP ${error.message}` : String(error)} />
   if (!data) return null
   const eq = data.equity_r.length ? data.equity_r : [0]
   const last = eq[eq.length - 1] ?? 0
