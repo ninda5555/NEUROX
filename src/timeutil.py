@@ -34,7 +34,13 @@ def ensure_aware(d: dt.datetime) -> dt.datetime:
 
 
 def now_ist() -> dt.datetime:
-    return dt.datetime.now(IST)
+    # UTC-anchored then converted, rather than datetime.now(IST) directly.
+    # The two are mathematically identical for a fixed-offset zone like IST
+    # (no DST, ever) — but this form doesn't depend on datetime.now(tz)
+    # correctly delegating to tz.fromutc() under the hood, which is one
+    # fewer thing to have to trust on a box this session can't inspect
+    # directly when a timestamp bug is reported (2026-07-28 incident).
+    return dt.datetime.now(dt.timezone.utc).astimezone(IST)
 
 
 def to_ist(d: dt.datetime) -> dt.datetime:

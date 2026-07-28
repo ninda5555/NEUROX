@@ -70,6 +70,17 @@ def main(argv: list[str] | None = None) -> int:
         prof = client.profile()
         name = (prof.get("data") or {}).get("name", "?")
         print(f"Verified with profile(): logged in as {name}")
+
+        # Re-run the dashboard's upstream probes right now, on this fresh
+        # token, instead of leaving the banner showing whatever the last
+        # (pre-refresh) hourly heartbeat saw — that gap was a real incident
+        # (2026-07-28: banner kept showing a stale pre-reauth failure for
+        # ~40 min after a successful morning login).
+        from src.jobs.health import run_probes
+        health = run_probes(conn, client)
+        print("Upstream check: " + " | ".join(
+            f"{k} {'OK' if health[k]['ok'] else 'FAIL(' + str(health[k]['message'])[:70] + ')'}"
+            for k in ("profile", "quotes", "history")))
     return 0
 
 

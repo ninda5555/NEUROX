@@ -63,6 +63,16 @@ def job_daily_auto_login():
         return
     auth.headless_login(cfg)
     log.info("headless daily re-auth complete")
+    # Re-run the upstream probes immediately on the fresh token so the
+    # dashboard banner reflects reality right away, instead of showing
+    # whatever the last (pre-refresh) hourly heartbeat happened to see —
+    # the same gap job_heartbeat() closes for the manual-login path.
+    from src.jobs.health import run_probes
+    _, conn, _ = _ctx()
+    try:
+        run_probes(conn, _client(cfg, conn))
+    except Exception:
+        log.exception("post-login upstream probe run failed (non-fatal)")
 
 
 def _ctx():
