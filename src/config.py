@@ -85,6 +85,8 @@ DEFAULTS: dict[str, Any] = {
         "daily_loss_limit_pct": 3.0,
         "loss_limit_warn_frac": 0.75,
         "min_stop_to_cost": 5.0,
+        "min_expected_r": 0.0,   # post-cost E[R] floor; only ever rejects more
+                                 # than the confidence gate (see signals/engine)
     },
     "costs": {"per_side_pct": 0.05},
 }

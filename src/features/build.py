@@ -16,6 +16,7 @@ import pandas as pd
 from src.data.store import CandleStore
 from src.features import intraday as intraday_mod
 from src.features import swing as swing_mod
+from src.features import xsection as xs
 from src.features.ic_filter import ICReport, compute_ic_report
 from src.features.regime import NIFTY_SYMBOL, regime_feature_frame
 from src.timeutil import IST, ist_date, now_ist
@@ -109,7 +110,9 @@ def build_mode_features(mode: str, conn: sqlite3.Connection, store: CandleStore,
         raise RuntimeError(f"no symbols had enough {tf} candles — backfill first")
     allf = pd.concat(frames, ignore_index=True)
 
-    # merge regime features by IST date (regime is a feature, §6.4)
+    # merge regime by IST date. Regime stays in the STORED frame (the
+    # calibrator bucket and the journal read it) but no longer enters the
+    # model's feature matrix — see features/xsection.py.
     allf["regime_date"] = pd.DatetimeIndex(allf["ts"]).strftime("%Y-%m-%d")
     allf = allf.merge(regime, on="regime_date", how="left").drop(columns=["regime_date"])
     all_feature_cols = feature_cols + REGIME_COLS
@@ -120,7 +123,14 @@ def build_mode_features(mode: str, conn: sqlite3.Connection, store: CandleStore,
     n_written = _write_monthly(features_root, mode, out)
 
     labeled = out[out[label_col].notna() & ~out["mask_locked"].astype(bool)]
-    rep = compute_ic_report(labeled, all_feature_cols, label_col, mode)
+
+    # Cross-sectional rank WITHIN each bar, then IC on the ranked panel —
+    # measuring the only thing a scanner can act on (§ xsection). Regime and
+    # other per-bar constants are excluded from the candidate list entirely,
+    # so they can neither be selected nor rank to a misleading flat 0.
+    model_cols = xs.model_feature_cols(all_feature_cols)
+    ranked = xs.cross_sectional_rank(labeled, model_cols)
+    rep = compute_ic_report(ranked, model_cols, label_col, mode)
     rep_path = features_root / f"ic_report_{mode}_{ist_date().isoformat()}.json"
     rep_path.parent.mkdir(parents=True, exist_ok=True)
     rep_path.write_text(json.dumps(rep.to_dict(), indent=2))

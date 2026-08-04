@@ -17,6 +17,7 @@ from src.config import load_config
 from src.data.store import CandleStore
 from src.features import intraday as intraday_mod
 from src.features import swing as swing_mod
+from src.features import xsection as xs
 from src.features.build import REGIME_COLS
 from src.features.regime import NIFTY_SYMBOL, regime_feature_frame
 from src.journal.scorelog import log_scores
@@ -95,11 +96,21 @@ def intraday_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
             if r is not None:
                 rows.append(r)
 
+    # Cross-sectional rank across THIS bar's symbols, exactly as training
+    # does (features/xsection.py). Must happen over the whole cross-section
+    # before any scoring — a per-symbol loop cannot produce a rank — so OFI
+    # is attached first and the panel is ranked as a unit.
+    if ofi_lookup is not None:
+        for r in rows:
+            r["features"]["ofi_top"] = ofi_lookup(r["symbol"])
+    model_cols = xs.model_feature_cols(intraday_mod.FEATURE_COLS)
+    rows = xs.rank_one_bar(rows, model_cols)
+
     cands, score_rows = [], []
     for r in rows:
+        # regime rides along for the calibrator bucket + journal, NOT as a
+        # model feature (it is excluded from `feats` at training time)
         feat = {**r["features"], **regime_feats}
-        if ofi_lookup is not None:
-            feat["ofi_top"] = ofi_lookup(r["symbol"])
         best = None
         for d in (1, -1):
             fd = {**feat, "direction": float(d)}
@@ -163,7 +174,10 @@ def swing_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
     tracker = DayRiskTracker(conn, cfg["risk.capital"],
                              cfg["risk.daily_loss_limit_pct"],
                              cfg["risk.loss_limit_warn_frac"])
-    cands, score_rows = [], []
+    # phase 1 — build the whole cross-section before scoring anything, so the
+    # rank transform sees every peer (features/xsection.py). Scoring inside
+    # this loop would rank each stock against itself.
+    raw_rows = []
     for sym in symbols:
         d = store.read_candles("1d", sym)
         if len(d) < 210:
@@ -173,20 +187,31 @@ def swing_pass(conn: sqlite3.Connection, store: CandleStore, cfg,
         atr_pct = last.get("atr14_pct", np.nan)
         if not np.isfinite(atr_pct) or atr_pct <= 0:
             continue
-        feat = {**{c: (None if pd.isna(last[c]) else float(last[c]))
-                   for c in swing_mod.FEATURE_COLS}, **regime_feats}
+        raw_rows.append({
+            "symbol": sym, "ts": last["ts"].isoformat(),
+            "price": float(d["close"].iloc[-1]), "atr_pct": float(atr_pct),
+            "features": {c: (None if pd.isna(last[c]) else float(last[c]))
+                         for c in swing_mod.FEATURE_COLS}})
+
+    model_cols = xs.model_feature_cols(swing_mod.FEATURE_COLS)
+    raw_rows = xs.rank_one_bar(raw_rows, model_cols)
+
+    # phase 2 — score the ranked cross-section
+    cands, score_rows = [], []
+    for r in raw_rows:
+        feat = {**r["features"], **regime_feats}
         X = pd.DataFrame([{f2: feat.get(f2, np.nan) for f2 in feats}]).astype(np.float32)
         raw_p = booster.predict(X)
         spr = float(booster.spread(X)[0]) if hasattr(booster, "spread") else np.nan
         bkt = bucket_of(feat.get("regime_vix"), feat.get("regime_breadth"))
         p = float(cal.transform(raw_p, bkt)[0]) if isinstance(cal, RegimeCalibrator) \
             else float(cal.transform(raw_p)[0])
-        price = float(d["close"].iloc[-1])
-        cands.append(Candidate(symbol=sym, mode="SWING", direction=1,
+        price, atr_pct = r["price"], r["atr_pct"]
+        cands.append(Candidate(symbol=r["symbol"], mode="SWING", direction=1,
                                confidence=p, price=price,
                                atr=atr_pct / 100 * price, features=feat,
-                               ts=last["ts"].isoformat()))
-        score_rows.append({"ts": last["ts"].isoformat(), "symbol": sym,
+                               ts=r["ts"]))
+        score_rows.append({"ts": r["ts"], "symbol": r["symbol"],
                            "mode": "SWING", "model_id": model_id,
                            "direction": 1, "score_raw": float(raw_p[0]),
                            "confidence": p, "bucket": bkt, "emitted": 0,

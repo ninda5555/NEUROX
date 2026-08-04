@@ -17,6 +17,7 @@ from src import db as dbm
 from src.config import load_config
 from src.features import intraday as intraday_mod
 from src.features import swing as swing_mod
+from src.features import xsection as xs
 from src.features.build import REGIME_COLS
 from src.models import cv as cvmod
 from src.models.calibrate import (RegimeCalibrator, calibration_curve_points,
@@ -76,8 +77,20 @@ def _swing_uniqueness(out: pd.DataFrame) -> pd.Series:
 
 def prepare(mode: str, df: pd.DataFrame, *, half_life_days: float = 0.0,
             swing_uniqueness: bool = False) -> tuple[pd.DataFrame, list[str], str]:
+    """Returns (frame, model feature cols, label col).
+
+    The frame is cross-sectionally rank-normalised within each bar and the
+    per-bar constants (regime_*, tod_frac, dow) are dropped from the model's
+    feature list — see features/xsection.py. Regime columns stay ON the frame
+    so the calibrator can still bucket by them; they are simply not offered
+    to the booster.
+    """
+    df = xs.cross_sectional_rank(
+        df, xs.model_feature_cols(
+            (intraday_mod.FEATURE_COLS if mode == "INTRADAY"
+             else swing_mod.FEATURE_COLS) + REGIME_COLS))
     if mode == "INTRADAY":
-        base = intraday_mod.FEATURE_COLS + REGIME_COLS
+        base = xs.model_feature_cols(intraday_mod.FEATURE_COLS + REGIME_COLS)
         longs = df[df["label_long"].notna()].copy()
         longs["direction"], longs["label"] = 1.0, longs["label_long"]
         shorts = df[df["label_short"].notna()].copy()
@@ -90,7 +103,7 @@ def prepare(mode: str, df: pd.DataFrame, *, half_life_days: float = 0.0,
         if half_life_days > 0:
             _apply_time_decay(out, half_life_days)
         return out, base + ["direction"], "label"
-    base = swing_mod.FEATURE_COLS + REGIME_COLS
+    base = xs.model_feature_cols(swing_mod.FEATURE_COLS + REGIME_COLS)
     out = df[df["label_long"].notna()].copy()
     out["label"] = out["label_long"]
     if swing_uniqueness:

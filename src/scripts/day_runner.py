@@ -52,7 +52,10 @@ def top_candidates(conn, store, cfg, syms, asof, n=8):
                                start=asof - dt.timedelta(days=12), end=asof)
     bench = (pd.Series(nifty["close"].tolist(), index=pd.DatetimeIndex(nifty["ts"]))
              if not nifty.empty else None)
-    scored = []
+    # build the whole cross-section first, then rank, then score — same
+    # contract as the emit path (features/xsection.py)
+    from src.features import xsection as xs
+    raw_rows = []
     for sym in syms:
         df = store.read_candles("5min", sym, start=asof - dt.timedelta(days=12), end=asof)
         if len(df) < 60 or df["ts"].iloc[-1].date() != asof.date():
@@ -61,16 +64,21 @@ def top_candidates(conn, store, cfg, syms, asof, n=8):
         atr_pct = f.get("atr_pct", np.nan)
         if not np.isfinite(atr_pct) or atr_pct <= 0:
             continue  # same tradability filter the emit path applies
-        feat = {**{c: (None if pd.isna(f[c]) else float(f[c])) for c in im.FEATURE_COLS},
-                **regime_feats}
-        best = 0.0
+        raw_rows.append({"symbol": sym,
+                         "features": {c: (None if pd.isna(f[c]) else float(f[c]))
+                                      for c in im.FEATURE_COLS}})
+    raw_rows = xs.rank_one_bar(raw_rows, xs.model_feature_cols(im.FEATURE_COLS))
+
+    scored = []
+    for r in raw_rows:
+        sym = r["symbol"]
+        feat = {**r["features"], **regime_feats}
         for d in (1, -1):
             fd = {**feat, "direction": float(d)}
             X = pd.DataFrame([{c: fd.get(c, np.nan) for c in feats}])
             raw = booster.predict(X.astype(np.float32))
             bkt = bucket_of(fd.get("regime_vix"), fd.get("regime_breadth"))
             p = float(cal.transform(raw, bkt)[0]) if isinstance(cal, RegimeCalibrator) else float(cal.transform(raw)[0])
-            best = max(best, p if d > 0 else p)
             scored.append((p, sym, "LONG" if d > 0 else "SHORT"))
     scored.sort(key=lambda x: -x[0])
     seen, out = set(), []

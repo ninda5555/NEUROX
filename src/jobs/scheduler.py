@@ -30,6 +30,7 @@ from src.models.drift import psi_check
 from src.journal.paper import settle_paper_trades
 from src.signals.livescan import swing_pass
 from src.timeutil import IST, MARKET_CLOSE, now_ist
+from src.features.regime import compute_regime, store_regime
 from src.universe.earnings import fetch_earnings_calendar
 from src.universe.master import (build_universe, eq_candidate_symbols,
                                  latest_included_symbols)
@@ -224,6 +225,31 @@ def job_candle_topup():
     log.info("top-up done; %d outcome rows refreshed", n)
 
 
+def job_regime_refresh():
+    """16:35 IST Mon-Fri, after the 16:20 candle top-up: recompute the daily
+    market_regime row (VIX level/trend, NIFTY vs 50/200-DMA, advance-decline
+    breadth).
+
+    Added 2026-08-01. Nothing in the scheduler ever called compute_regime/
+    store_regime — the table was only written when someone ran
+    build_features by hand, so on an unattended box it silently froze at
+    whatever the last manual run produced. Regime drives the calibrator
+    bucket and the UI banner, so a stale row means signals are calibrated
+    against a market that no longer exists.
+    """
+    cfg, conn, store = _ctx()
+    syms = latest_included_symbols(conn)
+    if not syms:
+        log.error("regime refresh skipped: universe empty")
+        return
+    regime = compute_regime(store, syms)
+    n = store_regime(conn, regime)
+    latest = regime.dropna(subset=["vix"]).iloc[-1]
+    log.info("regime refreshed: %d dates | latest %s VIX %.1f (%s) breadth %+.2f -> %s",
+             n, latest.regime_date, latest.vix, latest.vix_trend,
+             latest.breadth_adv_dec, latest.label)
+
+
 def job_universe_rebuild():
     """20:30 IST: nightly universe rebuild (surveillance + liquidity)."""
     cfg, conn, store = _ctx()
@@ -310,6 +336,8 @@ def build_scheduler(cfg) -> BlockingScheduler:
               CronTrigger(minute=10, timezone=IST))  # hourly, every day
     s.add_job(_safe(job_swing_scan), CronTrigger(day_of_week=wd, hour=15, minute=50, timezone=IST))
     s.add_job(_safe(job_candle_topup), CronTrigger(day_of_week=wd, hour=16, minute=20, timezone=IST))
+    # after top-up (fresh candles), before any retrain reads the table
+    s.add_job(_safe(job_regime_refresh), CronTrigger(day_of_week=wd, hour=16, minute=35, timezone=IST))
     s.add_job(_safe(job_universe_rebuild), CronTrigger(day_of_week=wd, hour=20, minute=30, timezone=IST))
     s.add_job(_safe(job_daily_backfill_universe_candles),
               CronTrigger(day_of_week=wd, hour=21, minute=0, timezone=IST))
@@ -327,8 +355,8 @@ def build_scheduler(cfg) -> BlockingScheduler:
 
     log.info("scheduler up (IST): auto-login 06:00%s · catch-up 08:50 · "
              "intraday scan */20 09:25-15:30 · heartbeat hourly · swing 15:50 "
-             "· top-up 16:20 · universe 20:30 · backfill 21:00 · backup 21:30 "
-             "· %s · digest Fri 16:45",
+             "· top-up 16:20 · regime 16:35 · universe 20:30 · backfill 21:00 "
+             "· backup 21:30 · %s · digest Fri 16:45",
              " (auto_login off)" if not cfg["fyers.auto_login"] else "", retrain_desc)
     return s
 

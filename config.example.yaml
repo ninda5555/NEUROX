@@ -96,6 +96,12 @@ risk:                     # CLAUDE.md §7
   daily_loss_limit_pct: 3.0
   loss_limit_warn_frac: 0.75
   min_stop_to_cost: 5.0      # skip setups whose stop is < 5× round-trip cost (§7)
+  min_expected_r: 0.0        # post-cost expectancy gate. E[R] = p*(reward/risk)
+                             # - (1-p) - cost/risk must clear this. Runs AFTER
+                             # the confidence gate and only ever rejects more —
+                             # it is not a way to admit setups confidence
+                             # refused. 0.0 = "must not lose money in
+                             # expectation"; raise it to demand a real edge.
 
 costs:                    # CLAUDE.md §13
   per_side_pct: 0.05      # brokerage + STT + slippage estimate, per side

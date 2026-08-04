@@ -37,6 +37,25 @@ class Candidate:
     ts: str | None = None    # bar time (replay); None -> live now
 
 
+def expected_r(confidence: float, entry: float, stop: float, target: float,
+               round_trip_per_share: float) -> float:
+    """Expected R-multiple after modeled round-trip costs.
+
+        E[R] = p * (reward/risk) - (1 - p) * 1 - cost/risk
+
+    R is denominated in the plan's own risk unit (entry -> stop), so this is
+    directly comparable across setups with different stop widths. Costs are
+    charged in the same unit, which is where intraday hurts: a 0.30% 5-min
+    ATR against a 0.10% round trip spends ~0.33R on costs before the trade
+    has done anything, versus ~0.05R for a 2% daily ATR.
+    """
+    risk = abs(entry - stop)
+    if risk <= 0:
+        return float("-inf")
+    rr = abs(target - entry) / risk
+    return confidence * rr - (1.0 - confidence) - round_trip_per_share / risk
+
+
 def emit(conn: sqlite3.Connection, store: CandleStore, cfg, *, model_id: str,
          booster, feature_list: list[str], candidate: Candidate,
          regime: dict | None, tracker: DayRiskTracker) -> dict | None:
@@ -70,6 +89,21 @@ def emit(conn: sqlite3.Connection, store: CandleStore, cfg, *, model_id: str,
     if abs(c.price - stop) < cfg["risk.min_stop_to_cost"] * round_trip_per_share:
         return None
 
+    # Post-cost expectancy gate (added 2026-08-01). The confidence gate above
+    # is a probability threshold, but whether a setup is worth taking depends
+    # on the PAYOFF too: at TP 1.5x / SL 1.0x ATR, break-even is p = 0.40, so
+    # 0.60 silently demands +0.50R per trade while a 2.5:1 setup would be
+    # profitable far lower. This checks the thing that actually matters —
+    # expected R after modeled costs — so the bar is consistent with each
+    # setup's own risk/reward instead of assuming one payoff shape.
+    #
+    # It runs AFTER the confidence gate and can only ever REJECT more, never
+    # admit anything the confidence gate refused. Loosening confidence to
+    # emit more signals is explicitly not what this is for.
+    exp_r = expected_r(c.confidence, c.price, stop, target, round_trip_per_share)
+    if exp_r < cfg["risk.min_expected_r"]:
+        return None
+
     qty, capped = size_position(capital=cfg["risk.capital"], risk_pct=risk_pct_cfg,
                                 entry=c.price, stop=stop,
                                 max_notional_pct=cfg["risk.max_position_notional_pct"])
@@ -98,7 +132,8 @@ def emit(conn: sqlite3.Connection, store: CandleStore, cfg, *, model_id: str,
                    f"(calibrated {c.confidence:.2f}). "
                    + " ".join(s["sentence"] for s in shap_top[:3])
                    + f" Plan risks ₹{at_risk:,.0f} "
-                   f"({at_risk / cfg['risk.capital'] * 100:.2f}% of capital). {holding}")
+                   f"({at_risk / cfg['risk.capital'] * 100:.2f}% of capital). "
+                   f"Expected value after modeled costs: {exp_r:+.2f}R. {holding}")
 
     signal_id = insert_signal(
         conn, mode=c.mode, symbol=c.symbol, direction=c.direction,
@@ -112,5 +147,5 @@ def emit(conn: sqlite3.Connection, store: CandleStore, cfg, *, model_id: str,
     return {"signal_id": signal_id, "symbol": c.symbol, "mode": c.mode,
             "direction": c.direction, "confidence": c.confidence,
             "entry": c.price, "stop": stop, "target": target, "qty": qty,
-            "at_risk": at_risk, "flags": flags, "shap_top": shap_top,
-            "explanation": explanation}
+            "at_risk": at_risk, "expected_r": exp_r, "flags": flags,
+            "shap_top": shap_top, "explanation": explanation}

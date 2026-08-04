@@ -155,12 +155,21 @@ def test_replay_feed_global_time_order(tmp_path):
 
 
 # ---------- IC filter ----------
+def _panel(rng, n_bars=300, n_names=60):
+    """A real cross-sectional panel: many symbols per bar, many bars — the
+    shape a scanner actually scores."""
+    ts = np.repeat(pd.date_range("2026-01-01", periods=n_bars, freq="5min", tz="Asia/Kolkata"), n_names)
+    n = len(ts)
+    signal = rng.normal(0, 1, n)
+    return ts, n, signal
+
+
 def test_ic_filter_keeps_signal_drops_noise_and_corr():
     rng = np.random.default_rng(7)
-    n = 30_000  # large enough that noise IC (~1/sqrt(n)) sits below the floor
-    signal = rng.normal(0, 1, n)
+    ts, n, signal = _panel(rng)
     label = (signal + rng.normal(0, 1, n) > 0).astype(float)
     frame = pd.DataFrame({
+        "ts": ts,
         "good": signal,
         "good_twin": signal * 1.001 + rng.normal(0, 0.001, n),  # corr ~1 with good
         "noise": rng.normal(0, 1, n),
@@ -170,3 +179,39 @@ def test_ic_filter_keeps_signal_drops_noise_and_corr():
     assert "good" in rep.kept
     assert "noise" in rep.dropped_low_ic
     assert any(d == "good_twin" for d, _ in rep.dropped_corr) or "good_twin" not in rep.kept
+
+
+def test_market_wide_constant_is_dropped_however_good_pooled_ic_looks():
+    """The 2026-08-01 root-cause fix, encoded. A feature that is one value
+    per bar (regime_vix, regime_breadth, tod_frac) cannot separate stocks
+    within a scan, no matter how strongly it correlates with outcomes in a
+    POOLED correlation. Pooled IC scored regime_breadth +0.0786 (top of the
+    report) when its true cross-sectional IC was +0.0087."""
+    rng = np.random.default_rng(11)
+    n_bars, n_names = 300, 60
+    ts, n, _ = _panel(rng, n_bars, n_names)
+    # one value per bar, repeated across every symbol in that bar …
+    per_bar = rng.normal(0, 1, n_bars)
+    regime_like = np.repeat(per_bar, n_names)
+    # … and make the LABEL strongly driven by it, so pooled IC looks superb
+    label = (regime_like + rng.normal(0, 0.5, n) > 0).astype(float)
+    frame = pd.DataFrame({"ts": ts, "regime_like": regime_like, "label_long": label})
+
+    rep = compute_ic_report(frame, ["regime_like"], "label_long", "INTRADAY")
+
+    assert abs(rep.ic_pooled["regime_like"]) > 0.3, "pooled IC should look strong"
+    assert rep.ic["regime_like"] != rep.ic["regime_like"], "cross-sectional IC must be NaN"
+    assert "regime_like" in rep.dropped_low_ic
+    assert "regime_like" not in rep.kept
+
+
+def test_ic_report_carries_t_stats_and_bar_counts():
+    rng = np.random.default_rng(3)
+    ts, n, signal = _panel(rng)
+    frame = pd.DataFrame({"ts": ts, "good": signal,
+                          "label_long": (signal + rng.normal(0, 1, n) > 0).astype(float)})
+    rep = compute_ic_report(frame, ["good"], "label_long", "SWING")
+    assert rep.n_bars == 300
+    assert rep.ic_bars["good"] > 250
+    assert abs(rep.ic_t["good"]) > 3.0
+    assert rep.ic_std["good"] > 0
