@@ -14,7 +14,8 @@ from src.models.ensemble import (BaggedBooster, JsonIsotonic,
                                  calibrator_from_json, calibrator_to_json,
                                  train_ensemble)
 from src.models.explain import top_contributors
-from src.models.registry import load_active, save_model, set_active
+from src.models.registry import (FeatureSpaceMismatch, load_active, save_model,
+                                 set_active)
 
 FEATS = ["f1", "f2"]
 
@@ -116,10 +117,32 @@ def test_registry_legacy_pickle_fallback(conn, tmp_path, data):
         "VALUES ('old', 'SWING', 'x', '[]', '{}', '{}', ?, ?, 1)",
         (json.dumps(_cv_report()), str(tmp_path / "old.txt")))
     conn.commit()
-    mid, booster, cal, feats = load_active(conn, "SWING")
+    # the legacy artifact still LOADS (for inspection/backfill), but only
+    # when the caller explicitly opts out of the feature-space check
+    mid, booster, cal, feats = load_active(conn, "SWING", require_current_space=False)
     assert mid == "old" and feats == FEATS
     assert not isinstance(booster, BaggedBooster)
     assert cal.transform([0.7])[0] > 0.5
+
+
+def test_legacy_model_is_refused_for_serving(conn, tmp_path, data):
+    """A model trained before the 2026-08-01 cross-sectional fix saw raw
+    feature values; the scan path now produces within-bar ranks. Serving it
+    would be silent train/serve skew, so the default load REFUSES."""
+    single = train_ensemble(*data, FEATS, n_members=1)
+    single.save_model(str(tmp_path / "old2.txt"))
+    iso = fit_isotonic(np.linspace(0, 1, 100),
+                       (np.linspace(0, 1, 100) > 0.5).astype(float))
+    with open(tmp_path / "old2.pkl", "wb") as fh:
+        pickle.dump({"calibrator": iso, "feature_list": FEATS}, fh)
+    conn.execute(
+        "INSERT INTO models (model_id, mode, trained_at, feature_list, "
+        "lgbm_params, calibration, cv_report, artifact_path, is_active) "
+        "VALUES ('old2', 'INTRADAY', 'x', '[]', '{}', '{}', ?, ?, 1)",
+        (json.dumps(_cv_report()), str(tmp_path / "old2.txt")))
+    conn.commit()
+    with pytest.raises(FeatureSpaceMismatch):
+        load_active(conn, "INTRADAY")
 
 
 def test_shap_averaging_over_members(data):

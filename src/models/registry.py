@@ -14,6 +14,21 @@ from pathlib import Path
 from src.timeutil import ist_date, ist_iso, now_ist
 
 
+# Feature space every model trained from 2026-08-01 on expects: features
+# percentile-ranked within their bar, per-bar constants excluded
+# (features/xsection.py). Legacy artifacts carry no marker and are refused
+# by the scan path, because they were fitted on raw values.
+FEATURE_SPACE = "xsection_rank_v1"
+
+
+class FeatureSpaceMismatch(RuntimeError):
+    """Active model predates the cross-sectional fix. Serving it would feed
+    it rank-normalised inputs it was never fitted on — a silent skew, so we
+    stop loudly instead. Fix by retraining:
+        python -m src.scripts.build_features && python -m src.scripts.retrain
+    """
+
+
 def new_model_id(mode: str) -> str:
     return f"{mode.lower()}_{ist_date().isoformat()}_{uuid.uuid4().hex[:4]}"
 
@@ -43,6 +58,11 @@ def save_model(conn: sqlite3.Connection, models_dir: Path, *, mode: str,
     (models_dir / f"{model_id}.calib.json").write_text(json.dumps(
         {"calibrator": calibrator_to_json(calibrator),
          "feature_list": feature_list, "n_members": len(members),
+         # which feature SPACE this model expects (added 2026-08-01). Models
+         # trained before the cross-sectional fix saw raw values; serving
+         # them rank-normalised inputs is silent train/serve skew, so the
+         # scan path refuses rather than scoring nonsense. Absent == legacy.
+         "feature_space": FEATURE_SPACE,
          **({"meta_features": meta.ctx_cols} if meta else {})}))
     if featstats:
         # training-time feature distributions — the PSI drift baseline (T7)
@@ -163,7 +183,7 @@ def promote_if_better(conn: sqlite3.Connection, model_id: str, *,
     return decision
 
 
-def load_active(conn: sqlite3.Connection, mode: str):
+def load_active(conn: sqlite3.Connection, mode: str, *, require_current_space: bool = True):
     """Returns (model_id, booster, calibrator, feature_list) for the active
     model of a mode. booster is a BaggedBooster when member artifacts exist
     ({model_id}.m1.txt …), else a plain Booster — the scan path duck-types.
@@ -179,6 +199,7 @@ def load_active(conn: sqlite3.Connection, mode: str):
     re-checking this."""
     import lightgbm as lgb
     from src.models.ensemble import BaggedBooster, calibrator_from_json
+    require = require_current_space
     row = conn.execute("SELECT * FROM models WHERE mode=? AND is_active=1",
                        (mode,)).fetchone()
     if row is None:
@@ -195,6 +216,7 @@ def load_active(conn: sqlite3.Connection, mode: str):
     calib_json = artifact.with_suffix(".calib.json")
     if calib_json.exists():
         blob = json.loads(calib_json.read_text())
+        _check_feature_space(row["model_id"], blob.get("feature_space"), require)
         if blob.get("meta_features"):        # T11: wrap the meta filter
             from src.models.meta import MetaPipeline
             meta_b = lgb.Booster(
@@ -204,4 +226,18 @@ def load_active(conn: sqlite3.Connection, mode: str):
                 calibrator_from_json(blob["calibrator"]), blob["feature_list"])
     with open(artifact.with_suffix(".pkl"), "rb") as fh:   # pre-T10 artifacts
         blob = pickle.load(fh)
+    _check_feature_space(row["model_id"], None, require)
     return row["model_id"], booster, blob["calibrator"], blob["feature_list"]
+
+
+def _check_feature_space(model_id: str, space: str | None, require: bool) -> None:
+    if not require or space == FEATURE_SPACE:
+        return
+    raise FeatureSpaceMismatch(
+        f"active model {model_id} was trained on feature space "
+        f"{space or 'legacy (raw values, per-bar constants included)'}, but "
+        f"the scan path now produces {FEATURE_SPACE}. Scoring it would feed "
+        "the model inputs it was never fitted on. Rebuild features and "
+        "retrain before serving:\n"
+        "  python -m src.scripts.build_features --mode both\n"
+        "  python -m src.scripts.retrain --mode both")
