@@ -64,12 +64,14 @@ class ICReport:
     ic_bars: dict[str, int] = field(default_factory=dict)       # bars the IC was measurable on
     ic_pooled: dict[str, float] = field(default_factory=dict)   # OLD measure, kept for contrast
     n_bars: int = 0
+    overlap_bars: int = 1      # Newey-West lag used for the t-stats
     dropped_low_ic: list[str] = field(default_factory=list)
     dropped_corr: list[tuple[str, str]] = field(default_factory=list)  # (dropped, kept_because)
     kept: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {"mode": self.mode, "n_rows": self.n_rows, "n_bars": self.n_bars,
+                "overlap_bars": self.overlap_bars,
                 "ic": self.ic, "ic_t": self.ic_t, "ic_std": self.ic_std,
                 "ic_bars": self.ic_bars, "ic_pooled": self.ic_pooled,
                 "dropped_low_ic": self.dropped_low_ic,
@@ -87,9 +89,34 @@ def spearman_ic(x: pd.Series, y: pd.Series) -> float:
     return float(x[m].rank().corr(y[m].rank()))
 
 
+def _newey_west_se(ics: np.ndarray, lag: int) -> float:
+    """HAC standard error of the mean of an autocorrelated series.
+
+    The IC series is NOT independent across bars: a triple-barrier label
+    started at bar t and one started at t+1 resolve over almost the same
+    path, so their ICs move together. Treating them as independent inflates
+    t by roughly sqrt(overlap) — for 10-session swing labels that is ~3x,
+    which is the difference between "12 features are significant" and
+    "3 are". Bartlett-kernel Newey-West with lag = the overlap horizon.
+    """
+    n = len(ics)
+    if n < 2:
+        return float("nan")
+    x = ics - ics.mean()
+    var = float(x @ x) / n
+    lag = max(0, min(int(lag), n - 1))
+    for k in range(1, lag + 1):
+        w = 1.0 - k / (lag + 1.0)
+        var += 2.0 * w * float(x[k:] @ x[:-k]) / n
+    if var <= 0:
+        return float("nan")
+    return float(np.sqrt(var / n))
+
+
 def cross_sectional_ic(frame: pd.DataFrame, feature: str, label_col: str,
                        ts_col: str = "ts",
-                       min_names: int = MIN_NAMES_PER_BAR) -> tuple[float, float, float, int]:
+                       min_names: int = MIN_NAMES_PER_BAR,
+                       overlap_bars: int = 1) -> tuple[float, float, float, int]:
     """Spearman IC within each bar, averaged across bars.
 
     Returns (mean_ic, std_ic, t_stat, n_bars_measured). All NaN/0 when the
@@ -130,16 +157,38 @@ def cross_sectional_ic(frame: pd.DataFrame, feature: str, label_col: str,
     mean = float(ics.mean())
     sd = float(ics.std())
     n = int(len(ics))
-    t = float(mean / (sd / np.sqrt(n))) if sd > 0 and n > 1 else float("nan")
+    se = _newey_west_se(ics.to_numpy(), overlap_bars - 1)
+    t = float(mean / se) if se == se and se > 0 else float("nan")
     return mean, sd, t, n
+
+
+def label_overlap_bars(frame: pd.DataFrame, mode: str, ts_col: str = "ts") -> int:
+    """How many CONSECUTIVE bars carry overlapping label windows.
+
+    SWING: a 10-session barrier walk, one bar per session -> 10.
+    INTRADAY: labels resolve by 15:15 the same day, so every bar in a
+    session overlaps every later bar in it -> the session's bar count,
+    measured from the data rather than assumed.
+    """
+    if mode == "SWING":
+        return 10
+    days = pd.DatetimeIndex(frame[ts_col]).normalize()
+    per_day = frame.groupby(days)[ts_col].nunique()
+    return int(per_day.median()) if len(per_day) else 1
 
 
 def compute_ic_report(frame: pd.DataFrame, feature_cols: list[str], label_col: str,
                       mode: str, ic_min: float = IC_MIN,
                       corr_max: float = CORR_MAX, t_min: float = T_MIN,
-                      ts_col: str = "ts") -> ICReport:
+                      ts_col: str = "ts", overlap_bars: int | None = None) -> ICReport:
     """`frame` must already have masked/unlabeled rows removed, and must
-    carry `ts_col` so the cross-section can be formed."""
+    carry `ts_col` so the cross-section can be formed.
+
+    `overlap_bars` sets the Newey-West lag used for the IC t-stat; leave it
+    None to infer it from the mode's label horizon (see label_overlap_bars).
+    Pass 1 to disable the correction — only sensible for non-overlapping
+    labels, which this project does not have.
+    """
     rep = ICReport(mode=mode, n_rows=len(frame))
     y = frame[label_col]
     if ts_col not in frame.columns:
@@ -148,9 +197,13 @@ def compute_ic_report(frame: pd.DataFrame, feature_cols: list[str], label_col: s
             "cross-section by; got columns "
             f"{sorted(frame.columns)[:12]}…")
     rep.n_bars = int(frame[ts_col].nunique())
+    if overlap_bars is None:
+        overlap_bars = label_overlap_bars(frame, mode, ts_col)
+    rep.overlap_bars = int(overlap_bars)
 
     for f in feature_cols:
-        mean, sd, t, nb = cross_sectional_ic(frame, f, label_col, ts_col)
+        mean, sd, t, nb = cross_sectional_ic(frame, f, label_col, ts_col,
+                                             overlap_bars=overlap_bars)
         rep.ic[f] = mean
         rep.ic_std[f] = sd
         rep.ic_t[f] = t
@@ -190,6 +243,8 @@ def format_report(rep: ICReport) -> str:
         f"IC report — {rep.mode} ({rep.n_rows:,} labeled rows, {rep.n_bars:,} bars)",
         "cross-sectional IC (within-bar, averaged) is what selects; 'pooled' is the",
         "OLD conflated measure, shown only so the gap stays visible.",
+        f"t-stats are Newey-West with lag {rep.overlap_bars} (overlapping labels: "
+        "an uncorrected t is inflated ~sqrt(overlap)).",
         "",
         f"{'feature':<24}{'xs IC':>9}{'t':>8}{'bars':>8}{'pooled':>9}  status"]
     for f, v in sorted(rep.ic.items(),

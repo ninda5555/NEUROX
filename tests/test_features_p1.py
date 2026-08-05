@@ -205,6 +205,39 @@ def test_market_wide_constant_is_dropped_however_good_pooled_ic_looks():
     assert "regime_like" not in rep.kept
 
 
+def test_overlapping_labels_deflate_the_ic_t_stat():
+    """Triple-barrier labels overlap: a swing label started today and one
+    started tomorrow resolve over almost the same path, and slow-moving
+    features make consecutive bars' ICs move together. Treating bars as
+    independent inflates t. Newey-West measures the actual autocorrelation
+    rather than assuming a fixed sqrt(horizon) haircut.
+    """
+    rng = np.random.default_rng(7)
+    n_bars, n_names, H = 400, 60, 10
+    # persistent per-symbol feature (AR-1, like dist_20dma or rsi_14)
+    x = np.zeros((n_bars, n_names))
+    x[0] = rng.normal(0, 1, n_names)
+    for t in range(1, n_bars):
+        x[t] = 0.95 * x[t - 1] + rng.normal(0, 0.31, n_names)
+    # forward outcome measured over the NEXT H bars -> overlapping windows
+    noise = rng.normal(0, 1, (n_bars + H, n_names))
+    fwd = np.array([0.30 * x[t] + noise[t:t + H].mean(axis=0) * 1.2
+                    for t in range(n_bars)])
+    ts = np.repeat(pd.date_range("2026-01-01", periods=n_bars, freq="1D",
+                                 tz="Asia/Kolkata"), n_names)
+    frame = pd.DataFrame({"ts": ts, "sig": x.ravel(),
+                          "label_long": (fwd > 0).astype(float).ravel()})
+
+    naive = compute_ic_report(frame, ["sig"], "label_long", "SWING", overlap_bars=1)
+    hac = compute_ic_report(frame, ["sig"], "label_long", "SWING")   # infers 10
+
+    assert hac.overlap_bars == 10
+    assert abs(hac.ic_t["sig"]) < abs(naive.ic_t["sig"]), "HAC must deflate t here"
+    assert abs(naive.ic_t["sig"]) / abs(hac.ic_t["sig"]) > 1.5
+    # the IC estimate itself is unchanged — only its uncertainty
+    assert abs(hac.ic["sig"] - naive.ic["sig"]) < 1e-12
+
+
 def test_ic_report_carries_t_stats_and_bar_counts():
     rng = np.random.default_rng(3)
     ts, n, signal = _panel(rng)
