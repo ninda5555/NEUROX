@@ -20,7 +20,8 @@ from src.features import swing as swing_mod
 from src.features import xsection as xs
 from src.features.build import REGIME_COLS
 from src.models import cv as cvmod
-from src.models.calibrate import (RegimeCalibrator, calibration_curve_points,
+from src.models.calibrate import (RegimeCalibrator, calibration_curve_oos,
+                                  calibration_curve_points,
                                   fit_isotonic)
 from src.models.ensemble import train_ensemble
 from src.models.train import LGBM_PARAMS, train_fn_for_cv
@@ -121,6 +122,8 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Train, validate, register models")
     ap.add_argument("--mode", choices=["INTRADAY", "SWING", "both"], default="both")
     ap.add_argument("--folds", type=int, default=6)
+    ap.add_argument("--top-k", type=int, default=12,
+                    help="scanner_top_n analogue for the top-k CV metric")
     ap.add_argument("--no-activate", action="store_true",
                     help="register only; skip the promotion gate entirely")
     ap.add_argument("--force-activate", action="store_true",
@@ -146,15 +149,27 @@ def main(argv: list[str] | None = None) -> int:
         print(f"purged walk-forward CV ({args.folds} folds, threshold {threshold}) …")
         results, flags = cvmod.run_cv(frame, mode, feature_cols, label_col,
                                       train_fn_for_cv, n_folds=args.folds,
-                                      threshold=threshold)
+                                      threshold=threshold, top_k=args.top_k)
 
         print(f"\n{'fold':<5}{'test window':<26}{'train n':>9}{'signals':>8}"
-              f"{'precision':>10}{'calib err':>10}{'avg R':>7}{'max DD%':>8}")
+              f"{'precision':>10}{'calib err':>10}{'avg R':>7}{'max DD%':>8}"
+              f"{'topK prec':>11}{'topK n':>8}{'topK R':>8}")
         for r in results:
             print(f"{r.fold:<5}{r.test_start + '..' + r.test_end:<26}"
                   f"{r.n_train:>9,}{r.n_signals:>8,}"
                   f"{fmt(r.precision_at_thr):>10}{fmt(r.calibration_err, '.3f'):>10}"
-                  f"{fmt(r.avg_r_multiple):>7}{fmt(r.max_drawdown_pct):>8}")
+                  f"{fmt(r.avg_r_multiple):>7}{fmt(r.max_drawdown_pct):>8}"
+                  f"{fmt(r.precision_top_k):>11}{r.n_top_k:>8,}"
+                  f"{fmt(r.avg_r_top_k):>8}")
+        # top-k is the honest read when the gate is unreachable: it is what
+        # the scanner actually does (rank, take the best N) and it is defined
+        # in every fold, including the ones that emitted nothing at threshold
+        tk = [r.precision_top_k for r in results if r.precision_top_k == r.precision_top_k]
+        tr = [r.avg_r_top_k for r in results if r.avg_r_top_k == r.avg_r_top_k]
+        if tk:
+            print(f"top-{args.top_k} precision across folds: "
+                  f"{np.mean(tk):.3f} ± {np.std(tk):.3f} | "
+                  f"realised R {np.mean(tr):+.3f} ± {np.std(tr):.3f}")
         precs = [r.precision_at_thr for r in results if not np.isnan(r.precision_at_thr)]
         print(f"precision mean ± std: {np.mean(precs):.3f} ± {np.std(precs):.3f} "
               "(spread shown, never averaged away)")
@@ -206,20 +221,44 @@ def main(argv: list[str] | None = None) -> int:
 
         iso = RegimeCalibrator().fit(oof_for_cal, oof_y, oof_b)
         curve = calibration_curve_points(iso.transform(oof_for_cal), oof_y)
+        # genuinely out-of-sample: fit on the earlier 70% of OOF rows, score
+        # the later 30%. The in-sample `curve` above is x==y by construction
+        # and cannot show miscalibration (see calibrate.py).
+        cut = int(len(oof_for_cal) * 0.7)
+        curve_oos = calibration_curve_oos(oof_for_cal[:cut], oof_y[:cut],
+                                          oof_for_cal[cut:], oof_y[cut:])
         per_bucket = {b: [round(float(iso.transform([oof_pred.max()], b)[0]), 3)]
                       for b in iso.buckets}
         print(f"regime calibration buckets: {list(iso.buckets)} | "
               f"honest ceiling per bucket at max raw score: {per_bucket}")
+        if iso.rejected:
+            print("REJECTED calibration buckets (fell back to the pooled map "
+                  "— shown, never silent):")
+            for b, why in iso.rejected.items():
+                print(f"  ⚠ {b}: {why}")
+            flags = flags + [{"rule": "calibration_bucket_rejected",
+                              "detail": f"{b}: {why}"}
+                             for b, why in iso.rejected.items()]
+        oos_desc = curve_oos or ("not computable (too few rows) — reported "
+                                 "absent rather than substituting the "
+                                 "in-sample curve")
+        print(f"out-of-sample calibration curve: {oos_desc}")
+        if curve_oos:
+            gap = max(abs(a - b) for a, b in curve_oos)
+            print(f"  worst |predicted - realised| out of sample: {gap:.3f}")
 
         cv_report = {"threshold": threshold,
                      "meta": meta_report,
                      "precision_mean": float(np.mean(precs)) if precs else None,
                      "precision_std": float(np.std(precs)) if precs else None,
+                     "calibration_curve_oos": curve_oos,
+                     "calibration_rejected_buckets": iso.rejected,
                      "folds": [{k: getattr(r, k) for k in
                                 ("fold", "train_start", "train_end", "test_start",
                                  "test_end", "n_train", "n_signals",
                                  "precision_at_thr", "calibration_err",
-                                 "avg_r_multiple", "max_drawdown_pct")}
+                                 "avg_r_multiple", "max_drawdown_pct",
+                                 "precision_top_k", "n_top_k", "avg_r_top_k")}
                                for r in results],
                      "ic_kept": kept}
         from src.models.drift import compute_featstats

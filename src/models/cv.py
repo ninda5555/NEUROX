@@ -45,6 +45,10 @@ class FoldResult:
     avg_r_multiple: float            # NaN if no signals
     max_drawdown_pct: float          # R-drawdown x risk_pct
     kept_features: list[str]
+    # top-k: always computable, unlike the threshold-gated fields above
+    precision_top_k: float = float("nan")
+    n_top_k: int = 0
+    avg_r_top_k: float = float("nan")
     test_pred_raw: np.ndarray = field(repr=False, default=None)
     test_label: np.ndarray = field(repr=False, default=None)
     test_bucket: np.ndarray = field(repr=False, default=None)
@@ -83,6 +87,53 @@ def session_folds(dates: list, n_folds: int, initial_train_frac: float = 0.3):
     return out
 
 
+def _realised_r(frame: pd.DataFrame, mode: str, label_col: str) -> np.ndarray:
+    """Per-row realised R, preferring the stored three-way outcome.
+
+    INTRADAY stacks long and short rows, so the correct column depends on
+    each row's `direction`. Pre-2026-08-05 feature files have no r_* column;
+    those fall back to the old win/lose assumption, which OVERSTATES losses
+    by charging timeouts a full stop-out — the fallback exists so old
+    parquets still run, not because it is right.
+    """
+    y = frame[label_col].to_numpy()
+    if mode == "INTRADAY" and {"r_long", "r_short"} <= set(frame.columns):
+        d = frame["direction"].to_numpy() if "direction" in frame.columns \
+            else np.ones(len(frame))
+        r = np.where(d > 0, frame["r_long"].to_numpy(), frame["r_short"].to_numpy())
+    elif "r_long" in frame.columns:
+        r = frame["r_long"].to_numpy()
+    else:
+        return np.where(y > 0, R_WIN[mode], -1.0)
+    # any row whose R never got stored keeps the old assumption
+    return np.where(np.isfinite(r), r, np.where(y > 0, R_WIN[mode], -1.0))
+
+
+def top_k_precision(te: pd.DataFrame, p: np.ndarray, y: np.ndarray,
+                    r: np.ndarray, k: int) -> tuple[float, int, float]:
+    """What the SCANNER actually does: rank each session's cross-section by
+    calibrated confidence and take the top k, rather than everything over a
+    threshold.
+
+    This is reported because a threshold-gated metric goes blind exactly
+    when the gate is unreachable — the 2026-08-05 swing run produced `nan`
+    precision in 2 of 6 folds for that reason, which says the gate could not
+    be reached but nothing about whether the ranking has skill. Top-k is
+    always computable and is the number that matches how signals are chosen.
+
+    Returns (precision, n_selected, avg realised R).
+    """
+    if len(te) == 0 or k <= 0:
+        return float("nan"), 0, float("nan")
+    df = pd.DataFrame({"_d": pd.DatetimeIndex(te["ts"]).date,
+                       "_p": p, "_y": y, "_r": r})
+    sel = (df.sort_values("_p", ascending=False)
+             .groupby("_d", sort=False).head(k))
+    if sel.empty:
+        return float("nan"), 0, float("nan")
+    return float(sel["_y"].mean()), int(len(sel)), float(sel["_r"].mean())
+
+
 def ece(pred: np.ndarray, label: np.ndarray, bins: int = 10) -> float:
     if len(pred) == 0:
         return float("nan")
@@ -100,7 +151,8 @@ def max_drawdown_r(r_series: np.ndarray) -> float:
 
 def run_cv(frame: pd.DataFrame, mode: str, feature_cols: list[str],
            label_col: str, train_fn, n_folds: int = 6,
-           threshold: float = 0.60) -> tuple[list[FoldResult], list[dict]]:
+           threshold: float = 0.60,
+           top_k: int = 12) -> tuple[list[FoldResult], list[dict]]:
     """`train_fn(X_tr, y_tr, X_val, y_val, features) -> predict_fn(X)->raw p`.
     Returns (fold results, red flags). Calibration for fold metrics is fit on
     the fold's validation tail (train-only data), applied to test preds."""
@@ -150,8 +202,12 @@ def run_cv(frame: pd.DataFrame, mode: str, feature_cols: list[str],
 
         sig = p_te >= threshold
         te_sig = te[sig].assign(_p=p_te[sig])
-        r_win = R_WIN[mode]
-        r = np.where(y_te[sig] > 0, r_win, -1.0)
+        # Realised R from the stored three-way outcome when available: a
+        # timeout exits near flat, NOT at the stop, and the old
+        # where(win, r_win, -1.0) charged every non-win a full stop-out.
+        # Falls back to the old assumption only for pre-2026-08-05 feature
+        # files that carry no r_* column.
+        r = _realised_r(te, mode, label_col)[sig]
         order = np.argsort(te_sig["ts"].to_numpy())
         results.append(FoldResult(
             fold=k + 1,
@@ -164,6 +220,9 @@ def run_cv(frame: pd.DataFrame, mode: str, feature_cols: list[str],
             calibration_err=ece(p_te, y_te),
             avg_r_multiple=float(r.mean()) if sig.any() else float("nan"),
             max_drawdown_pct=max_drawdown_r(r[order]) * RISK_PCT[mode],
+            **dict(zip(("precision_top_k", "n_top_k", "avg_r_top_k"),
+                       top_k_precision(te, p_te, y_te,
+                                       _realised_r(te, mode, label_col), top_k))),
             kept_features=kept,
             test_pred_raw=raw_te, test_label=y_te,
             test_bucket=np.array([bucket_of(v, b) for v, b in zip(

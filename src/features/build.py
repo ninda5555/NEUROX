@@ -117,8 +117,13 @@ def build_mode_features(mode: str, conn: sqlite3.Connection, store: CandleStore,
     allf = allf.merge(regime, on="regime_date", how="left").drop(columns=["regime_date"])
     all_feature_cols = feature_cols + REGIME_COLS
 
+    # r_*/outcome_* carry the realised R and the three-way barrier outcome so
+    # expectancy is measured from what actually happened rather than assumed
+    # (see features/labels.py). Stored, not inferred downstream.
+    label_cols = ("label_long", "label_short", "r_long", "r_short",
+                  "outcome_long", "outcome_short", "mask_locked")
     keep_cols = (["symbol", "ts"] + all_feature_cols
-                 + [c for c in ("label_long", "label_short", "mask_locked") if c in allf])
+                 + [c for c in label_cols if c in allf])
     out = allf[keep_cols]
     n_written = _write_monthly(features_root, mode, out)
 
