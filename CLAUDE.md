@@ -2,6 +2,60 @@
 
 Read this file before writing any code or designing any screen. Claude Code and Claude Design both treat this document as authoritative. If a decision here conflicts with an ad-hoc instruction, ask before deviating; if it conflicts with reality (an API changed), update this file first, then the code.
 
+## 0. Research outcome (05-Aug-2026): both modes tested, no tradeable edge found — READ THIS FIRST
+
+**Everything below this section describes a system that was built, and built correctly. It does not describe a system that makes money. Both trading modes were measured against a corrected instrument and both failed. No model is active. Nothing should be activated.**
+
+This section exists because the rest of this file reads like a live specification, and a reader who skips to §1 will start building on a hypothesis that has already been tested and rejected.
+
+### What was measured
+
+**INTRADAY — no cross-sectional edge.** Information Coefficient was originally computed *pooled* across all symbol-bars, which conflates "are setups more likely to win on some days" (market timing) with "which stock should I pick right now" (selection). A scanner can only act on the second. Recomputed within each bar and averaged (Grinold–Kahn), the per-symbol technical features collapse:
+
+| feature | pooled IC | cross-sectional IC | t |
+|---|---|---|---|
+| `vwap_dist_atr` | +0.0169 | **+0.0004** | +0.5 |
+| `macd_hist` | +0.0154 | **−0.0022** | −3.0 |
+| `rsi_14` | +0.0099 | **−0.0086** | −9.1 |
+| `regime_breadth` | +0.0786 | +0.0087 | — (per-bar constant) |
+
+Two of thirteen features survived, and the stronger of those (`atr_pct`, +0.0387) is an artifact of the barrier floor, not alpha: win rate rises with ATR for **both** long and short (long 0.256→0.373, short 0.324→0.391 across deciles), whereas directional edge moves the two in opposite directions. Base rates: `label_long` 0.3490, `label_short` 0.3999. Intraday additionally must clear ~0.33R of round-trip costs against a ~0.30% 5-min ATR. Dead.
+
+**SWING — real ranking skill, not a tradeable system.** Retrained on 5 years of daily history (430,622 labelled rows, positive rate 0.276), 12 purged walk-forward folds, with three-way outcome accounting (a timeout marked to its actual exit rather than charged a full −1R). Seven features survived a Newey-West-corrected cross-sectional IC at ~0.015–0.04 — genuine, in the range of documented equity factors, and consistent with cross-sectional momentum.
+
+It still fails, for reasons that are not fixable by retraining:
+
+- **Portfolio infeasibility.** The one positive number — top-12 realised R **+0.312 ± 0.220**, CI excluding zero — describes taking 12 positions per session on a 10-session hold: **~120 concurrent positions, ~180% of capital at risk**, against a 20%-notional-per-position cap. It measures ranking quality, not a portfolio anyone can hold. No cut-down version of it has been shown to make money.
+- **Drawdown.** Fold 9: **43.71% of capital** peak-to-trough (29R) on a strategy averaging +0.31R per trade. Disqualifying for a single retail account irrespective of expectancy.
+- **Dormancy and regime dependence.** **8 of 12 folds emitted no signals at all.** Among the four that fired, precision ranged 0.41–0.90 (std 0.180). The strategy is idle two-thirds of the time and then trades hard in windows it cannot identify in advance.
+- **No stable high-confidence region.** The final calibrator **refused to build**: `DegenerateCalibration — pooled fallback ceiling rests on 2 sample(s)`. Across every out-of-fold prediction, exactly two landed in the top confidence band. Fold-local calibrators looked confident (fold 8 reported 0.90 precision) because each was fitted on its own recent window; pooled across regimes, the windows disagree about what a high score means and the high-confidence region vanishes. **There is no model artifact from this run.**
+
+### Stop conditions, committed in advance
+
+Five criteria were fixed *before* the final run, to prevent tuning until something passed:
+
+| # | condition | outcome |
+|---|---|---|
+| 1 | precision CI still spans break-even | **fired** — top-12 0.406 ± 0.093, CI [0.353, 0.459] |
+| 2 | expectancy < 0.05R after costs | did **not** fire — realised +0.312R |
+| 3 | fold-to-fold precision std > 0.10 | **fired** — 0.180 |
+| 4 | drawdown-to-expectancy ratio | **fired** — 43.71% |
+| 5 | out-of-sample calibration off-diagonal | untestable — no calibrator built |
+
+Three of five fired, and the model could not be constructed. Condition 2 passing is recorded honestly: the corrected R accounting did improve the result, and the ranking does carry skill. That skill is not convertible into a position book this account can hold.
+
+### Do not retrain this
+
+Retraining, recalibrating, adding folds, or lowering the confidence gate will not change any of the above. The failures are structural — cost arithmetic for intraday, portfolio capacity and calibration stability for swing — not artifacts of fitting. This project already lost time to that assumption once, when a degenerate model was read as a data-freshness problem.
+
+**The honest next hypothesis is event-driven or flow-based** — earnings drift, index rebalancing, corporate actions, sector dislocation — where an independent developer has some structural reason to expect an edge that has not already been competed away from public technical indicators. That is a research programme measured in months, and it should be validated in a notebook *before* any of the machinery below is pointed at it.
+
+### What remains valuable
+
+The instrument itself. Purged walk-forward CV with embargo, cross-sectional IC with overlap-corrected significance, three-way outcome accounting, calibration guards that fail loudly rather than serving a flattering number, and an emission path that refuses to serve a model whose feature space it does not match. Four independent mechanisms each declined to report a result that was not there. That is the part worth reusing.
+
+---
+
 ## 1. What this project is — and is not
 
 **Is:** A decision-support trading assistant for NSE (Indian) equities. It scans a liquidity-filtered universe of all NSE stocks, generates ML-scored setups in two modes (intraday and swing), explains every signal in plain English via SHAP, sizes positions by volatility, journals everything, and tracks real outcomes. V1 produces signals + paper trading only — no live order placement.
@@ -342,6 +396,10 @@ The earlier prototype (`Trading-bot-claude-nse-intraday-trading-assistant-*.zip`
 | `dashboard/` (Streamlit) | Superseded by React UI; its honest-language patterns carry over |
 
 ## 16. Roadmap
+
+> **Halted at P5 (05-Aug-2026).** P0–P4 shipped and work. P5 (shadow operation) ended in a
+> negative result: both modes were tested and neither has a tradeable edge — see §0. P6/V2 are
+> not scheduled. The phases below are retained as the build record, not as a plan.
 
 1. **P0 – Foundations:** repo scaffold, config, Fyers client + rate limiter, daily auth, symbol master ingest, universe pipeline, backfill (daily + 5-min).
 2. **P1 – Features & data:** candle store, feature pipelines (both modes), tradability masks, regime table, IC report.

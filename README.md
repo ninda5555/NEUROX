@@ -1,5 +1,11 @@
 # NSE Trading Assistant
 
+> **Research outcome (05-Aug-2026): both trading modes were tested and neither has a tradeable
+> edge. No model is active and none should be activated. Read [CLAUDE.md §0](CLAUDE.md) before
+> using anything here.** Intraday has no cross-sectional edge; swing has measurable ranking skill
+> that does not convert into a holdable portfolio. Retraining will not change this. The
+> infrastructure below is sound and reusable — the strategy inside it is not.
+
 A decision-support trading assistant for NSE (Indian) equities. It scans a
 liquidity-filtered universe of all tradable NSE stocks, generates ML-scored
 setups in two modes (Intraday and Swing), explains every signal in plain
