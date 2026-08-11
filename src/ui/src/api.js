@@ -24,6 +24,8 @@ export const getJournal = (mode, q = '') => SNAP ? Promise.resolve(jFilter(SNAP.
 export const getModel = (mode) => SNAP ? Promise.resolve(SNAP.model[mode]) : fetch(`/api/model?mode=${mode}`).then(j)
 export const getUniverse = () => SNAP ? Promise.resolve(SNAP.universe) : fetch('/api/universe').then(j)
 export const getSearch = (q) => SNAP ? Promise.resolve(sFilter(SNAP.search, q)) : fetch(`/api/search?q=${encodeURIComponent(q)}`).then(j)
+export const getScreen = (refresh = 0) => SNAP ? Promise.resolve(SNAP.screen || { rows: [] })
+  : fetch(`/api/screen?refresh=${refresh}`).then(j)
 
 export const isPreview = () => !!SNAP
 export const previewNote = () => SNAP && SNAP._preview_note

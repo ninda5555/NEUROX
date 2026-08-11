@@ -6,20 +6,21 @@ import TopBar from './components/TopBar.jsx'
 import StatusStrip from './components/StatusStrip.jsx'
 import DataHealthBanner from './components/DataHealthBanner.jsx'
 import Splash from './components/Splash.jsx'
+import Predict from './pages/Predict.jsx'
 import Scanner from './pages/Scanner.jsx'
 import Search from './pages/Search.jsx'
 import Journal from './pages/Journal.jsx'
 import Model from './pages/Model.jsx'
 import Universe from './pages/Universe.jsx'
 
-const PAGES = { scanner: Scanner, search: Search, journal: Journal, model: Model, universe: Universe }
+const PAGES = { predict: Predict, scanner: Scanner, search: Search, journal: Journal, model: Model, universe: Universe }
 
 const PULL_TRIGGER = 64   // px of (damped) pull that arms a refresh
 const PULL_MAX = 90
 
 export default function App() {
   const [mode, setMode] = useState('INTRADAY')
-  const [page, setPage] = useState('scanner')
+  const [page, setPage] = useState('predict')
   const [status, setStatus] = useState(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [pull, setPull] = useState(0)

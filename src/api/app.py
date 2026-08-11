@@ -277,6 +277,53 @@ def scanner(mode: str = "INTRADAY"):
             "empty_reason": empty_reason}
 
 
+_SCREEN_CACHE: dict = {"key": None, "at": None, "payload": None}
+_SCREEN_TTL_S = 900   # 15 min: a daily-bar ranking cannot change faster
+
+
+@app.get("/api/screen")
+def screen(refresh: int = 0, top_n: int = 20):
+    """The Prediction button (06-Aug-2026).
+
+    Ranks today's universe on the swing factors that measurably survived
+    cross-sectional IC testing, and returns entry/stop/target levels plus
+    the reasoning behind each name. It reports a POSITION IN A RANKING, not
+    a probability — see src/signals/screener.py and CLAUDE.md §0 for why
+    there is no confidence number here.
+
+    Cached for 15 minutes because it reads ~900 symbols of daily candles and
+    the underlying bars only change once a day; `?refresh=1` forces a
+    recompute.
+    """
+    from src.signals.screener import build_screen, screen_is_stale
+    from src.universe.master import latest_included_symbols
+
+    c = conn()
+    syms = latest_included_symbols(c)
+    key = (len(syms), top_n)
+    now = now_ist()
+    cached = _SCREEN_CACHE["payload"]
+    if (not refresh and cached and _SCREEN_CACHE["key"] == key
+            and _SCREEN_CACHE["at"]
+            and (now - _SCREEN_CACHE["at"]).total_seconds() < _SCREEN_TTL_S):
+        return {**cached, "cached": True}
+
+    if not syms:
+        return {"mode": "SWING", "rows": [], "asof": None, "cached": False,
+                "n_screened": 0, "n_skipped": 0,
+                "generated_at": now.isoformat(timespec="seconds"),
+                "empty_reason": "The watched universe is empty — the nightly "
+                                "universe build has not run yet.",
+                "data_health": _data_health(c)}
+
+    payload = build_screen(c, store(), cfg, syms, top_n=top_n)
+    payload["stale"] = screen_is_stale(payload.get("asof"))
+    payload["data_health"] = _data_health(c)
+    payload["disclosure"] = DISCLOSURE
+    _SCREEN_CACHE.update(key=key, at=now, payload=payload)
+    return {**payload, "cached": False}
+
+
 @app.get("/api/journal")
 def journal(mode: str = "INTRADAY", q: str = ""):
     c = conn()
