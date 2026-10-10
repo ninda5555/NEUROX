@@ -12,15 +12,16 @@ import Search from './pages/Search.jsx'
 import Journal from './pages/Journal.jsx'
 import Model from './pages/Model.jsx'
 import Universe from './pages/Universe.jsx'
+import Monitor from './pages/Monitor.jsx'
 
-const PAGES = { predict: Predict, scanner: Scanner, search: Search, journal: Journal, model: Model, universe: Universe }
+const PAGES = { monitor: Monitor, predict: Predict, scanner: Scanner, search: Search, journal: Journal, model: Model, universe: Universe }
 
 const PULL_TRIGGER = 64   // px of (damped) pull that arms a refresh
 const PULL_MAX = 90
 
 export default function App() {
   const [mode, setMode] = useState('SWING')
-  const [page, setPage] = useState('predict')
+  const [page, setPage] = useState('monitor')
   const [status, setStatus] = useState(null)
   const [statusError, setStatusError] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)

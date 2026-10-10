@@ -92,6 +92,26 @@ def store() -> CandleStore:
     return CandleStore(cfg.path("paths.candles"))
 
 
+@app.get("/api/monitor")
+@dbm.scoped
+def monitor():
+    from src.journal.validation import forward_report
+    c = conn()
+    current_cfg = load_config()
+    pulse = dbm.get_state(c, "scheduler_pulse")
+    age = (now_ist() - parse_iso(pulse)).total_seconds() if pulse else None
+    raw = dbm.get_state(c, "observation")
+    observation = json.loads(raw) if raw else {"state": "waiting", "message": "Waiting for the collector."}
+    checked = observation.get("checked_at")
+    if checked and (now_ist() - parse_iso(checked)).total_seconds() > 900:
+        observation = {**observation, "state": "stale", "message": "Collection status is older than 15 minutes; inspect the service."}
+    return {"scheduler": {"running": age is not None and 0 <= age < 90, "last_pulse": pulse},
+            "broker_configured": bool(current_cfg["fyers.app_id"] and current_cfg["fyers.secret_key"]),
+            "token": auth.token_status(current_cfg), "observation": observation,
+            "validation": forward_report(c, dbm.get_state(c, "forward_validation_since")),
+            "real_orders_enabled": False}
+
+
 @app.get("/api/status")
 @dbm.scoped
 def status():

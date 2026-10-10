@@ -333,7 +333,15 @@ def job_weekly_digest():
 
 
 def build_scheduler(cfg) -> BlockingScheduler:
-    s = BlockingScheduler(timezone=IST)
+    from apscheduler.executors.pool import ThreadPoolExecutor
+    from src.jobs.monitor import observe, pulse
+    # Candle writers share one worker to avoid overlapping monthly file rewrites.
+    # The cheap liveness pulse gets its own worker, independent of broker latency.
+    s = BlockingScheduler(timezone=IST,
+                          executors={"default": ThreadPoolExecutor(1), "pulse": ThreadPoolExecutor(1)},
+                          job_defaults={"coalesce": True, "max_instances": 1, "misfire_grace_time": 120})
+    s.add_job(_safe(pulse), "interval", seconds=30, executor="pulse", id="liveness")
+    s.add_job(_safe(observe), "interval", minutes=10, id="observation", next_run_time=now_ist())
     wd = "mon-fri"
     s.add_job(_safe(job_daily_auto_login),
               CronTrigger(day_of_week=wd, hour=6, minute=0, timezone=IST))

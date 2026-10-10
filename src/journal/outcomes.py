@@ -19,18 +19,24 @@ HORIZONS = {"INTRADAY": ["30m", "60m", "eod"], "SWING": ["1d", "5d", "10d"]}
 
 def _window(sig: dict, horizon: str, store: CandleStore) -> pd.DataFrame:
     t0 = parse_iso(sig["ts"])
+    now = now_ist()
     if sig["mode"] == "INTRADAY":
         df = store.read_candles("5min", sig["symbol"], start=t0)
         df = df[pd.DatetimeIndex(df["ts"]).date == t0.date()]
-        df = df[df["ts"] > t0]
+        # Broker timestamps mark candle OPEN. Only completed candles that
+        # started after the decision may contribute to a forward outcome.
+        df = df[(df["ts"] >= t0) & (df["ts"] + dt.timedelta(minutes=5) <= now)]
         if horizon in ("30m", "60m"):
             mins = 30 if horizon == "30m" else 60
-            df = df[df["ts"] <= t0 + dt.timedelta(minutes=mins)]
+            df = df[df["ts"] + dt.timedelta(minutes=5) <= t0 + dt.timedelta(minutes=mins)]
         else:  # eod = up to square-off
-            df = df[[t.time() <= INTRADAY_SQUAREOFF for t in pd.DatetimeIndex(df["ts"])]]
+            deadline = IST.localize(dt.datetime.combine(t0.date(), INTRADAY_SQUAREOFF))
+            df = df[df["ts"] + dt.timedelta(minutes=5) <= deadline]
         return df
     df = store.read_candles("1d", sig["symbol"])
     df = df[pd.DatetimeIndex(df["ts"]).date > t0.date()]
+    complete = (pd.DatetimeIndex(df["ts"]).normalize() + pd.Timedelta(hours=15, minutes=30)) <= now
+    df = df[complete]
     n = {"1d": 1, "5d": 5, "10d": 10}[horizon]
     return df.head(n)
 
@@ -44,15 +50,27 @@ def evaluate_signal_horizon(sig: dict, horizon: str, store: CandleStore) -> dict
     entry, stop, target = sig["entry"], sig["stop_loss"], sig["target"]
     stop_dist = abs(entry - stop)
     status, exit_px = "expired", float(w["close"].iloc[-1])
-    for r in w.itertuples():
+    last_index = 0
+    for last_index, r in enumerate(w.itertuples()):
         if d > 0 and r.low <= stop:
-            status, exit_px = "hit_stop", stop; break
+            status, exit_px = "hit_stop", min(stop, r.open); break
         if d > 0 and r.high >= target:
             status, exit_px = "hit_target", target; break
         if d < 0 and r.high >= stop:
-            status, exit_px = "hit_stop", stop; break
+            status, exit_px = "hit_stop", max(stop, r.open); break
         if d < 0 and r.low <= target:
             status, exit_px = "hit_target", target; break
+    if status == "expired":
+        t0 = parse_iso(sig["ts"])
+        if sig["mode"] == "INTRADAY":
+            deadline = (t0 + dt.timedelta(minutes=int(horizon[:-1])) if horizon != "eod"
+                        else IST.localize(dt.datetime.combine(t0.date(), INTRADAY_SQUAREOFF)))
+            if now_ist() < deadline or w["ts"].iloc[-1] + dt.timedelta(minutes=5) < deadline:
+                return None
+        elif len(w) < {"1d": 1, "5d": 5, "10d": 10}[horizon]:
+            return None
+    # Excursions after the exit cannot count toward the trade's performance.
+    w = w.iloc[:last_index + 1]
     ret_pct = (exit_px / entry - 1) * 100 * d
     r_multiple = (exit_px - entry) * d / stop_dist if stop_dist else 0.0
     mae = (float(w["low"].min()) / entry - 1) * 100 if d > 0 else (1 - float(w["high"].max()) / entry) * 100

@@ -29,6 +29,54 @@ bash start.sh
 
 ## Daily operation
 
+### Laptop observation service (no paid hosting required)
+
+Run `monitor.bat` to start the dashboard and scheduler even before broker setup.
+It supervises both child processes, restarts crashes with backoff, prevents
+duplicate service launches, and rotates logs in `data/logs/service.log`.
+The Monitor page checks scheduler liveness separately from market-data freshness.
+Keep the laptop plugged in, connected, and awake. This setup does not change your
+Windows sleep or lid settings. It cannot observe markets while the laptop is off.
+
+To start monitoring automatically when you sign into Windows, run
+`powershell -ExecutionPolicy Bypass -File deploy/install-laptop-startup.ps1`.
+This creates only a shortcut in your current user's Startup folder; removing
+`NEUROX Monitor.lnk` from that folder disables automatic startup. Keep this
+project folder in place. Do not run `start.bat` and `monitor.bat` together.
+
+Create your own Fyers account/API app through the broker's dashboard. Run
+`connect-broker.bat` to enter the App ID, secret, and exact registered redirect
+URL privately on this computer, then restart the service. Complete `bootstrap.bat`
+for login and initial history. Renew login through `src.scripts.daily_auth`
+when required. Broker/KYC setup is a user action; no credentials belong in chat.
+Data permissions needed: Historical Data and Quotes & Market Data.
+
+Fyers documents free API data access for its clients:
+https://support.fyers.in/portal/en/kb/articles/do-i-need-to-pay-for-datafeeds
+Check current account/API eligibility in its dashboard; NEUROX does not create
+accounts, buy services, bypass broker authentication, or place real orders.
+
+The independent observer fetches five-minute candles every ten minutes within
+09:25–15:40 IST on weekdays. It observes the 50 highest-turnover included stocks
+and three indexes; before universe bootstrap, only the indexes are requested.
+The weekday clock is not an exchange holiday calendar: missing fresh candles
+are reported as stale/partial, never live. Outside the session, the service
+remains running for health checks and maintenance. It is not a tick feed.
+
+Forward paper reporting begins when the service first starts. Results are grouped
+by model and include pending trades, target-before-stop successes after modeled
+costs, net P&L, a descriptive Wilson interval, and closed-trade drawdown. Duplicate
+paper records count once. Only signals after model training and service start
+are included. This is an audit aid, not proof of out-of-sample validity: review
+training cutoffs, data completeness, overlapping trades, liquidity, capacity,
+slippage and walk-forward results separately. Earlier settled journal rows are
+not rewritten by the corrected outcome evaluator.
+
+The requested 70% target remains unverified. No model is created or approved
+by enabling observation. Existing rejected research stays inactive. New model
+development requires a testable hypothesis, leakage-free chronological validation,
+and prospective paper observation; collecting more data alone is not learning.
+
 The launcher starts the dashboard on 127.0.0.1:8000 and the maintenance scheduler.
 Keep both running for scheduled refreshes. Complete Fyers authentication when
 requested; the app does not purchase services or place real orders.
