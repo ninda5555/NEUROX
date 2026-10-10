@@ -104,8 +104,12 @@ def load_cached(config) -> dict | None:
     path = _token_path(config)
     if not path.exists():
         return None
-    with open(path) as f:
-        return json.load(f)
+    try:
+        with open(path, encoding="utf-8") as f:
+            cached = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return cached if isinstance(cached, dict) else None
 
 
 def get_valid_token(config) -> str:
@@ -121,7 +125,10 @@ def get_valid_token(config) -> str:
             f"cached token is from auth day {cached.get('auth_day')} "
             f"(today is {auth_day().isoformat()}, ~06:00 IST cutover) — re-auth"
         )
-    return cached["access_token"]
+    token = cached.get("access_token")
+    if not isinstance(token, str) or not token.strip():
+        raise NeedsReauth("cached token is empty or invalid — re-auth")
+    return token
 
 
 def headless_login(config) -> str:

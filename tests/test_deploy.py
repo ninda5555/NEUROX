@@ -23,7 +23,7 @@ def test_deploy_artifacts_exist():
 
 
 def _unit(name: str) -> str:
-    return (DEPLOY / "systemd" / name).read_text()
+    return (DEPLOY / "systemd" / name).read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("name,module", [
@@ -52,7 +52,7 @@ def test_services_restart_and_run_as_unprivileged_user():
 
 
 def test_firewall_denies_dashboard_port_publicly():
-    text = (DEPLOY / "firewall.sh").read_text()
+    text = (DEPLOY / "firewall.sh").read_text(encoding="utf-8")
     assert "deny 8000" in text
     assert "allow OpenSSH" in text or "allow ssh" in text.lower()
 
@@ -62,11 +62,11 @@ def test_never_recommends_tailscale_funnel():
     internet — the opposite of `tailscale serve`. No deploy script may invoke
     it, and docs may only mention it inside an explicit prohibition."""
     for sh in (DEPLOY).glob("*.sh"):
-        assert "funnel" not in sh.read_text().lower(), \
+        assert "funnel" not in sh.read_text(encoding="utf-8").lower(), \
             f"{sh.name} mentions tailscale funnel — it must never appear in a script"
     # In docs, the *command* `tailscale funnel` may appear only on a
     # prohibition line; explanatory prose about what funnel does is fine.
-    setup = (DEPLOY.parent / "SETUP.md").read_text().splitlines()
+    setup = (DEPLOY.parent / "SETUP.md").read_text(encoding="utf-8").splitlines()
     for i, line in enumerate(setup):
         if "tailscale funnel" in line.lower():
             assert "never" in line.lower() or "not " in line.lower(), \
@@ -74,7 +74,7 @@ def test_never_recommends_tailscale_funnel():
 
 
 def test_server_setup_locks_down_config_perms():
-    text = (DEPLOY / "server_setup.sh").read_text()
+    text = (DEPLOY / "server_setup.sh").read_text(encoding="utf-8")
     assert re.search(r"chmod 600 .*config\.yaml", text), \
         "server_setup.sh must chmod 600 config.yaml (holds the Fyers secret)"
 
@@ -97,17 +97,17 @@ def test_systemd_units_are_sandboxed(name, memory_max):
 
 
 def test_server_setup_rewrites_readwritepaths_on_override():
-    text = (DEPLOY / "server_setup.sh").read_text()
+    text = (DEPLOY / "server_setup.sh").read_text(encoding="utf-8")
     assert re.search(r"sed .*ReadWritePaths", text), \
         "server_setup.sh must rewrite ReadWritePaths when NEUROX_APP_DIR is overridden"
 
 
 def test_requirements_lock_is_hashed_and_covers_direct_deps():
     root = DEPLOY.parent
-    lock = (root / "requirements.lock").read_text()
+    lock = (root / "requirements.lock").read_text(encoding="utf-8")
     assert "--hash=sha256:" in lock, "requirements.lock must carry hashes (T14)"
     direct = [l.split("==")[0].strip().lower()
-              for l in (root / "requirements.txt").read_text().splitlines()
+              for l in (root / "requirements.txt").read_text(encoding="utf-8").splitlines()
               if "==" in l and not l.strip().startswith("#")]
     lock_pkgs = {l.split("==")[0].strip().lower()
                  for l in lock.splitlines() if "==" in l and not l.startswith(" ")}
@@ -116,30 +116,30 @@ def test_requirements_lock_is_hashed_and_covers_direct_deps():
 
 
 def test_server_setup_installs_tailscale_via_apt_and_unattended_upgrades():
-    text = (DEPLOY / "server_setup.sh").read_text()
+    text = (DEPLOY / "server_setup.sh").read_text(encoding="utf-8")
     assert "sources.list.d/tailscale.list" in text, "Tailscale must come from the apt repo, not curl|sh"
     assert "apt-get install -y -qq tailscale" in text
     assert "unattended-upgrades" in text
 
 
 def test_ci_workflow_runs_hashed_install_and_pytest():
-    ci = (DEPLOY.parent / ".github" / "workflows" / "ci.yml").read_text()
+    ci = (DEPLOY.parent / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "--require-hashes -r requirements.lock" in ci
     assert "pytest" in ci
 
 
 def test_harden_ssh_guards_against_lockout():
-    text = (DEPLOY / "harden_ssh.sh").read_text()
+    text = (DEPLOY / "harden_ssh.sh").read_text(encoding="utf-8")
     assert "PasswordAuthentication no" in text
     assert "authorized_keys" in text, "must check for a key before disabling passwords"
     assert re.search(r"sshd -t", text), "must validate sshd config before reload"
-    assert "server_setup.sh" in (DEPLOY / "server_setup.sh").read_text() or \
-        "harden_ssh.sh" in (DEPLOY / "server_setup.sh").read_text(), \
+    assert "server_setup.sh" in (DEPLOY / "server_setup.sh").read_text(encoding="utf-8") or \
+        "harden_ssh.sh" in (DEPLOY / "server_setup.sh").read_text(encoding="utf-8"), \
         "server_setup.sh must invoke harden_ssh.sh"
 
 
 def test_server_setup_is_idempotent_and_logs():
-    text = (DEPLOY / "server_setup.sh").read_text()
+    text = (DEPLOY / "server_setup.sh").read_text(encoding="utf-8")
     assert "set -euo pipefail" in text
     assert "LOG_FILE" in text and "tee -a" in text
     # every apt/useradd/venv/config.yaml/systemd step guards before acting,
@@ -149,14 +149,14 @@ def test_server_setup_is_idempotent_and_logs():
 
 
 def test_server_setup_has_arm_build_deps():
-    text = (DEPLOY / "server_setup.sh").read_text()
+    text = (DEPLOY / "server_setup.sh").read_text(encoding="utf-8")
     for pkg in ("cmake", "ninja-build", "libomp-dev", "libgomp1", "gfortran",
                "libopenblas-dev", "python3.11-dev"):
         assert pkg in text, f"missing aarch64 build dep: {pkg}"
 
 
 def test_server_setup_self_checks_both_services():
-    text = (DEPLOY / "server_setup.sh").read_text()
+    text = (DEPLOY / "server_setup.sh").read_text(encoding="utf-8")
     assert "systemctl" in text and "is-active" in text
     assert "neurox-dashboard" in text and "neurox-scheduler" in text
     assert "curl" in text and "127.0.0.1:8000" in text
@@ -164,7 +164,7 @@ def test_server_setup_self_checks_both_services():
 
 
 def test_oneshot_delegates_to_server_setup_without_duplicating_it():
-    text = (DEPLOY / "oneshot.sh").read_text()
+    text = (DEPLOY / "oneshot.sh").read_text(encoding="utf-8")
     assert "server_setup.sh" in text
     assert "set -euo pipefail" in text
     # oneshot's job is fetch-then-delegate, not re-implementing the install —

@@ -7,17 +7,16 @@ What it does, in order:
      login link, opens it in your browser, and waits for you to paste the
      redirect URL back — the only manual step (SEBI daily-auth mandate).
   2. Starts the dashboard at http://localhost:8000 and opens it.
-  3. Starts the all-day live scanner (rest-poll shadow runner).
+  3. Starts scheduled daily data maintenance.
 
-After that you just watch the dashboard. Predictions appear as they qualify;
-an empty scanner means "no trade" — that is the system working.
+Use Analyse for the swing factor screener. Historical ML research remains
+available, but a fresh installation has no active model.
 """
 
 from __future__ import annotations
 
 import subprocess
 import sys
-import threading
 import time
 import webbrowser
 
@@ -71,6 +70,7 @@ def main() -> int:
         print("config.yaml missing — copy config.example.yaml and fill Fyers keys.")
         return 2
     conn = dbm.connect(cfg.path("paths.db")); dbm.init_db(conn)
+    conn.close()
 
     ensure_token(cfg)
 
@@ -85,21 +85,25 @@ def main() -> int:
     except Exception:
         pass
 
-    # all-day live scanner
-    print("Starting the live scanner (runs until 15:30 IST)…\n")
-    runner = subprocess.Popen([sys.executable, "-m", "src.scripts.day_runner"])
+    if dash.poll() is not None:
+        print("Dashboard failed to start. Check port 8000 and the error above.")
+        return 1
+    print("Starting daily data maintenance; use Analyse for the swing screener.\n")
+    runner = subprocess.Popen([sys.executable, "-m", "src.jobs.scheduler"])
     try:
         runner.wait()
     except KeyboardInterrupt:
         pass
     finally:
         runner.terminate()
+        runner.wait()
         print("\nScanner stopped. Dashboard still running at http://localhost:8000 "
               "(Ctrl+C to stop it).")
         try:
             dash.wait()
         except KeyboardInterrupt:
             dash.terminate()
+            dash.wait()
     return 0
 
 

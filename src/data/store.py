@@ -20,7 +20,10 @@ CANDLE_COLS = ["ts", "open", "high", "low", "close", "volume"]
 
 def _safe_symbol(symbol: str) -> str:
     """NSE:RELIANCE-EQ -> RELIANCE-EQ (colon is not filesystem-friendly)."""
-    return symbol.split(":", 1)[-1]
+    name = symbol.split(":", 1)[-1]
+    if not name or name in {".", ".."} or any(c in name for c in '/\\:\x00'):
+        raise ValueError("invalid candle symbol")
+    return name
 
 
 class CandleStore:
@@ -28,6 +31,8 @@ class CandleStore:
         self.root = Path(root)
 
     def _dir(self, tf: str, symbol: str) -> Path:
+        if tf not in {"1d", "5min"}:
+            raise ValueError("timeframe must be 1d or 5min")
         return self.root / tf / _safe_symbol(symbol)
 
     def write_candles(self, tf: str, symbol: str, records: list[dict] | pd.DataFrame) -> int:
@@ -65,13 +70,14 @@ class CandleStore:
                      start: dt.datetime | None = None,
                      end: dt.datetime | None = None) -> pd.DataFrame:
         pdir = self._dir(tf, symbol)
-        files = sorted(pdir.glob("*.parquet")) if pdir.exists() else []
+        files = sorted(p for p in pdir.glob("*.parquet")
+                       if not p.name.endswith(".tmp.parquet")) if pdir.exists() else []
         if not files:
             return pd.DataFrame(columns=CANDLE_COLS)
         con = duckdb.connect()
         try:
-            query = f"SELECT * FROM read_parquet({[str(f) for f in files]!r}) ORDER BY ts"
-            df = con.execute(query).df()
+            df = con.execute("SELECT * FROM read_parquet(?) ORDER BY ts",
+                             [[str(f) for f in files]]).df()
         finally:
             con.close()
         df["ts"] = pd.to_datetime(df["ts"], utc=True).dt.tz_convert(IST)
@@ -84,7 +90,8 @@ class CandleStore:
     def last_ts(self, tf: str, symbol: str) -> dt.datetime | None:
         """Most recent stored candle timestamp (for backfill resume)."""
         pdir = self._dir(tf, symbol)
-        files = sorted(pdir.glob("*.parquet")) if pdir.exists() else []
+        files = sorted(p for p in pdir.glob("*.parquet")
+                       if not p.name.endswith(".tmp.parquet")) if pdir.exists() else []
         if not files:
             return None
         df = pd.read_parquet(files[-1], columns=["ts"])

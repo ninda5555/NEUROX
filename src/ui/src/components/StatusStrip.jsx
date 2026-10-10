@@ -40,7 +40,7 @@ export default function StatusStrip({ status }) {
            }}>
         <span className="text-dim">Daily loss limit</span>
         <span className="font-semibold" style={{ color: halted ? '#FB7185' : warn ? '#FDE68A' : '#34D399' }}>
-          {halted ? 'HALTED — 3% hit' : warn ? `WARNING · ${loss?.pct_of_capital?.toFixed(1)}% today` : `OK · ${loss ? loss.pct_of_capital.toFixed(1) : '0.0'}% today`}
+          {!loss ? 'Checking…' : halted ? `HALTED — ${loss.limit_pct ?? 3}% limit hit` : warn ? `WARNING · ${loss.pct_of_capital.toFixed(1)}% today` : `OK · ${loss.pct_of_capital.toFixed(1)}% today`}
         </span>
       </div>
     </div>

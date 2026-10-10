@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 
 import pandas as pd
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import JSONResponse
 
@@ -74,8 +74,9 @@ def _identity_ok(headers) -> bool:
 @app.middleware("http")
 async def _security(request, call_next):
     if not _identity_ok(request.headers):
-        return JSONResponse({"detail": "tailnet identity required"}, status_code=403)
-    resp = await call_next(request)
+        resp = JSONResponse({"detail": "tailnet identity required"}, status_code=403)
+    else:
+        resp = await call_next(request)
     for k, v in SECURITY_HEADERS.items():
         resp.headers.setdefault(k, v)
     return resp
@@ -92,6 +93,7 @@ def store() -> CandleStore:
 
 
 @app.get("/api/status")
+@dbm.scoped
 def status():
     c = conn()
     tok = auth.token_status(cfg)
@@ -161,6 +163,9 @@ def _feed_state(c) -> dict:
     (plus how long ago it was last touched) into a market-hours-aware read,
     so "no signal right now" reads correctly as expected-quiet outside
     trading hours rather than as a permanently-broken indicator."""
+    if not c.execute("SELECT 1 FROM models WHERE mode='INTRADAY' AND is_active=1").fetchone():
+        return {"state": "idle", "label": "Daily screener",
+                "detail": "Intraday research has no active model; Analyse uses stored daily bars."}
     row = c.execute("SELECT value, updated_at FROM app_state WHERE key='ws_status'").fetchone()
     ws = row["value"] if row else "offline"
     now = now_ist()
@@ -226,6 +231,7 @@ def _spark(symbol: str, mode: str) -> list[float]:
 
 
 @app.get("/api/scanner")
+@dbm.scoped
 def scanner(mode: str = "INTRADAY"):
     c = conn()
     today = ist_date().isoformat()
@@ -265,7 +271,11 @@ def scanner(mode: str = "INTRADAY"):
     empty_reason = None
     if not cards:
         health = _data_health(c)
-        if health["banner"]:
+        active = c.execute("SELECT 1 FROM models WHERE mode=? AND is_active=1", (mode,)).fetchone()
+        if not active:
+            empty_reason = ("No active model: the previous ML strategies failed validation. "
+                            "Use Analyse for the swing factor screener, which needs no model.")
+        elif health["banner"]:
             empty_reason = ("No setups shown because upstream data is broken right now — "
                             "this is NOT the model saying 'no trade', it has no fresh data "
                             f"to score: {health['banner']}")
@@ -282,7 +292,9 @@ _SCREEN_TTL_S = 900   # 15 min: a daily-bar ranking cannot change faster
 
 
 @app.get("/api/screen")
-def screen(refresh: int = 0, top_n: int = 20):
+@dbm.scoped
+def screen(refresh: int = Query(0, ge=0, le=1),
+           top_n: int = Query(20, ge=1, le=100)):
     """The Prediction button (06-Aug-2026).
 
     Ranks today's universe on the swing factors that measurably survived
@@ -300,17 +312,20 @@ def screen(refresh: int = 0, top_n: int = 20):
 
     c = conn()
     syms = latest_included_symbols(c)
-    key = (len(syms), top_n)
+    key = (tuple(sorted(syms)), top_n, dbm.get_state(c, "universe_snap_date"))
     now = now_ist()
     cached = _SCREEN_CACHE["payload"]
     if (not refresh and cached and _SCREEN_CACHE["key"] == key
             and _SCREEN_CACHE["at"]
             and (now - _SCREEN_CACHE["at"]).total_seconds() < _SCREEN_TTL_S):
-        return {**cached, "cached": True}
+        return {**cached, "cached": True,
+                "stale": screen_is_stale(cached.get("asof")),
+                "data_health": _data_health(c)}
 
     if not syms:
         return {"mode": "SWING", "rows": [], "asof": None, "cached": False,
                 "n_screened": 0, "n_skipped": 0,
+                "stale": True, "disclosure": DISCLOSURE,
                 "generated_at": now.isoformat(timespec="seconds"),
                 "empty_reason": "The watched universe is empty — the nightly "
                                 "universe build has not run yet.",
@@ -325,6 +340,7 @@ def screen(refresh: int = 0, top_n: int = 20):
 
 
 @app.get("/api/journal")
+@dbm.scoped
 def journal(mode: str = "INTRADAY", q: str = ""):
     c = conn()
     sigs = list_signals(c, mode=mode, query=q or None)
@@ -353,6 +369,7 @@ def journal(mode: str = "INTRADAY", q: str = ""):
 
 
 @app.get("/api/model")
+@dbm.scoped
 def model(mode: str = "INTRADAY"):
     c = conn()
     m = c.execute("SELECT * FROM models WHERE mode=? AND is_active=1", (mode,)).fetchone()
@@ -407,6 +424,7 @@ def model(mode: str = "INTRADAY"):
 
 
 @app.get("/api/universe")
+@dbm.scoped
 def universe():
     c = conn()
     snap = dbm.get_state(c, "universe_snap_date")
@@ -437,6 +455,7 @@ def universe():
 
 
 @app.get("/api/search")
+@dbm.scoped
 def search(q: str = ""):
     c = conn()
     snap = dbm.get_state(c, "universe_snap_date")

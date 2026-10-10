@@ -29,6 +29,10 @@ log = logging.getLogger(__name__)
 def backup_sqlite(db_path: Path, backup_dir: Path, keep_days: int = 14) -> dict:
     """Returns {status, path?, pruned}. Never raises."""
     try:
+        if not db_path.is_file():
+            raise FileNotFoundError(f"journal database does not exist: {db_path}")
+        if keep_days < 1:
+            raise ValueError("keep_days must be positive")
         backup_dir.mkdir(parents=True, exist_ok=True)
         day = ist_date().isoformat()
         raw = backup_dir / f"app-{day}.db"
@@ -49,8 +53,10 @@ def backup_sqlite(db_path: Path, backup_dir: Path, keep_days: int = 14) -> dict:
             log.error("backup integrity check failed: %s — backup discarded", check)
             return {"status": "integrity_failed", "pruned": 0}
 
-        with open(raw, "rb") as fin, gzip.open(gz, "wb", compresslevel=6) as fout:
+        tmp_gz = gz.with_suffix(".gz.tmp")
+        with open(raw, "rb") as fin, gzip.open(tmp_gz, "wb", compresslevel=6) as fout:
             shutil.copyfileobj(fin, fout)
+        tmp_gz.replace(gz)
         raw.unlink()
 
         cutoff = ist_date() - dt.timedelta(days=keep_days)

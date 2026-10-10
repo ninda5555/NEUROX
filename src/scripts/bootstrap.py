@@ -4,7 +4,7 @@
 
 Runs the whole pipeline end to end so that afterwards `python -m src.run`
 just works: daily auth -> symbol master + universe -> daily backfill ->
-5-min backfill -> sectors + earnings -> features -> train both models.
+sectors + earnings. The factor screener does not require ML training.
 
 Every step is resumable (backfill continues from stored data, universe/
 features/models re-run cleanly), so if it is interrupted just run it again.
@@ -40,7 +40,7 @@ def _progress(i, total, sym):
 
 
 def main() -> int:
-    total = 8
+    total = 5
     cfg = load_config()
     if not cfg["fyers.app_id"] or not cfg["fyers.secret_key"]:
         print("config.yaml missing Fyers keys — copy config.example.yaml to "
@@ -77,22 +77,15 @@ def main() -> int:
     except Exception as e:
         print(f"    (skipped, non-fatal: {e})")
 
-    _step(6, total, "5-min backfill (included universe)")
-    inc = latest_included_symbols(conn)
-    r = backfill_many(client, store, ["NSE:NIFTY50-INDEX"] + inc, "5min",
-                      cfg["backfill.fivemin_days"], on_progress=_progress)
-    print(f"    5min: {r['symbols_ok']} ok, {r['rows']:,} rows")
-
-    _step(7, total, "Build features (both modes) + IC reports")
-    from src.scripts.build_features import main as build_features
-    build_features([])
-
-    _step(8, total, "Train + validate + register models")
-    from src.scripts.retrain import main as retrain
-    retrain(["--mode", "both"])
-
-    print("\n✓ Bootstrap complete. Every trading morning, just run:\n"
+    if s.included == 0:
+        print("No stocks passed the universe filters. Setup needs attention; "
+              "check daily data and surveillance before analysing.")
+        return 1
+    print("\n✓ Data setup complete. The swing screener needs no model. "
+          "Rejected ML strategies were not trained or activated.\n"
+          "Every trading morning, just run:\n"
           "    python -m src.run\n")
+    conn.close()
     return 0
 
 

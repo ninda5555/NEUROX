@@ -129,7 +129,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--force-activate", action="store_true",
                     help="activate even if the promotion gate says hold "
                          "(the override is recorded on the model row)")
+    ap.add_argument("--activate", action="store_true",
+                    help="explicit research opt-in to promotion; registration is the default")
     args = ap.parse_args(argv)
+    if args.no_activate and (args.activate or args.force_activate):
+        ap.error("--no-activate cannot be combined with activation flags")
 
     cfg = load_config()
     conn = dbm.connect(cfg.path("paths.db"))
@@ -277,8 +281,8 @@ def main(argv: list[str] | None = None) -> int:
         # auto-activates — it must beat (or match, within tolerance) the
         # current champion on its own CV report. Decision + reasons land on
         # the model row and the Model page.
-        if args.no_activate:
-            print("promotion gate skipped (--no-activate); model registered only")
+        if args.no_activate or not (args.activate or args.force_activate):
+            print("model registered only; no tradeable edge has been established")
         else:
             d = promote_if_better(conn, model_id, force=args.force_activate)
             print(f"promotion gate: {d['decision'].upper()}"

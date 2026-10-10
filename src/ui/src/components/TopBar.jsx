@@ -1,4 +1,4 @@
-export default function TopBar({ mode, setMode, status }) {
+export default function TopBar({ mode, setMode, status, analysis = false }) {
   const tokenOk = status?.token?.valid
   // Real-time data here is REST-polling, not a persistent socket (CLAUDE.md
   // §12) — "live" is never a value the backend actually writes, so this used
@@ -17,22 +17,22 @@ export default function TopBar({ mode, setMode, status }) {
                style={{ background: 'linear-gradient(150deg, #F87171, #B91C1C)', boxShadow: '0 6px 18px rgba(220,38,38,0.45)' }}>N</div>
           <div>
             <div className="text-[15px] md:text-[16px] font-semibold tracking-[0.06em] font-mono">NEURO<span className="text-red2">X</span></div>
-            <div className="text-[11px] text-dim font-normal">NSE signals &amp; paper trading · V1</div>
+            <div className="text-[11px] text-dim font-normal">NSE swing screener · research &amp; paper journal</div>
           </div>
         </div>
 
         <div className="order-last w-full md:order-none md:w-auto flex-1 flex justify-center md:justify-center">
           <div className="inline-flex p-1 bg-white/[0.04] border border-white/[0.08] rounded-xl">
             {['INTRADAY', 'SWING'].map((m) => {
-              const active = mode === m
+              const active = (analysis ? 'SWING' : mode) === m
               return (
-                <button key={m} onClick={() => setMode(m)}
+                <button key={m} onClick={() => setMode(m)} disabled={analysis}
                         className="border-0 cursor-pointer px-[22px] py-2 rounded-[9px] font-sans text-[13px] font-semibold tracking-[0.02em] transition-all"
                         style={{
                           background: active ? 'linear-gradient(135deg, rgba(220,38,38,0.30), rgba(239,68,68,0.15))' : 'transparent',
                           color: active ? '#FEE2E2' : '#8B8B94',
                           boxShadow: active ? 'inset 0 0 0 1px rgba(248,113,113,0.4), 0 4px 14px rgba(220,38,38,0.3)' : 'none',
-                        }}>{m}</button>
+                        }}>{analysis ? (m === 'SWING' ? 'SWING ANALYSIS' : 'INTRADAY UNAVAILABLE') : m}</button>
               )
             })}
           </div>
@@ -51,9 +51,9 @@ export default function TopBar({ mode, setMode, status }) {
             </span>
           </div>
           <div className="flex items-center gap-[7px] px-[11px] py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">
-            <span className="text-[11px] text-soft">{tokenOk ? 'Token valid ·' : 'Token expired ·'}</span>
+            <span className="text-[11px] text-soft">{!status ? 'Checking login…' : tokenOk ? 'Token valid ·' : 'Login needed ·'}</span>
             <span className="text-[11px] font-mono" style={{ color: tokenOk ? '#ECECEE' : '#FB7185' }}>
-              {tokenOk ? 're-auth by 06:00' : 're-auth needed'}
+              {!status ? '—' : tokenOk ? 're-auth by 06:00' : 're-auth needed'}
             </span>
           </div>
         </div>

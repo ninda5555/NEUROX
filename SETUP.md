@@ -1,188 +1,76 @@
-# Run the bot on your own computer — step by step
-
-Your dashboard and the whole engine run locally. You need **Python** (that's
-it — the dashboard is pre-built, so no Node/coding required). Below: Windows
-first, then Mac.
-
-Time: ~15 min of setup + a one-time data download that runs 1–3 hours by
-itself. After that, each trading morning is ~2 minutes.
-
----
+# Set up NEUROX
 
 ## Windows
 
-**1. Install Python 3.11+**
-Go to <https://www.python.org/downloads/> → "Download Python". Run the
-installer and **tick "Add Python to PATH"** on the first screen.
+1. Install Python 3.11 or 3.12 with the official Python installer and enable PATH.
+2. Extract the project into a writable folder.
+3. Run setup.bat. It creates .venv, installs the hash-verified dependency lock,
+   and creates config.yaml. Any installation error stops setup.
+4. In config.yaml, enter fyers.app_id and fyers.secret_key. Keep identifiers,
+   the PIN, and other credential values quoted. Do not commit this file.
+5. Run bootstrap.bat. Complete Fyers login when prompted. The first download
+   may take hours; interrupted downloads resume from stored history.
+6. Run start.bat. The dashboard opens at http://localhost:8000. Press Analyse.
 
-**2. Get the project**
-On the GitHub page → green **Code** button → **Download ZIP**. Unzip it to a
-folder you'll remember, e.g. `C:\NEUROX`.
+Setup downloads daily history, builds the liquidity/surveillance-filtered
+universe, and obtains sector/earnings context. It does not train or activate ML
+models. The screener does not require one.
 
-**3. One-time setup**
-Open the folder and **double-click `setup.bat`**. It builds everything and
-creates `config.yaml`. Wait for "Setup done".
+## macOS or Linux
 
-**4. Put in your Fyers keys**
-Open `config.yaml` in Notepad. Fill:
-```
-fyers:
-  app_id: "2PAWCOT3W3-100"
-  secret_key: "YOUR_SECRET"
-  redirect_uri: "https://127.0.0.1"
-```
-Save.
-
-**5. One-time data download + training**
-**Double-click `bootstrap.bat`.** It logs you in (paste the redirect URL like
-we do here), then downloads ~2 years of history and trains the models. This
-runs **1–3 hours** — leave it. Do it once.
-
-**6. Every trading morning**
-**Double-click `start.bat`** → it opens the login, you paste the redirect URL,
-and your **dashboard opens at http://localhost:8000**. The bot scans live all
-day. That's it.
-
----
-
-## Mac
-
-Open the **Terminal** app, then:
+Use Python 3.11 or 3.12:
 
 ```bash
-# 1. Python 3.11+ (if you don't have it):  brew install python@3.11
-# 2. Get the project:
-git clone https://github.com/ninda5555/neurox.git && cd neurox
-# (or download the ZIP from GitHub and `cd` into the folder)
-
-# 3. One-time setup:
-./setup.sh
-
-# 4. Put your Fyers keys into config.yaml (open it in any text editor)
-
-# 5. One-time data download + training (1-3 hours):
-./bootstrap.sh
-
-# 6. Every trading morning:
-./start.sh          # opens the dashboard at http://localhost:8000
+bash setup.sh
+# Edit config.yaml with your Fyers app credentials.
+bash bootstrap.sh
+bash start.sh
 ```
 
----
+## Daily operation
 
-## Run on a cloud server (always-on, phone access)
+The launcher starts the dashboard on 127.0.0.1:8000 and the maintenance scheduler.
+Keep both running for scheduled refreshes. Complete Fyers authentication when
+requested; the app does not purchase services or place real orders.
 
-Instead of your own laptop, run NEUROX on a small always-on Ubuntu server so
-it scans and retrains itself 24/7, and you check it from your phone over a
-private network — no home Wi-Fi needed, works fine on 5G.
+The default scheduler performs morning catch-up, upstream health probes,
+evening candle refresh, regime refresh, universe rebuild, and nightly backups.
+Historical signal jobs need active research models; on a fresh installation
+these are unavailable. Automatic retraining is off. For research only, weekly
+or daily retraining can be enabled; scheduled artifacts are never auto-activated.
 
-**You do the server part** (Claude Code can't create or pay for a server for
-you): spin up any **Ubuntu 22.04** VPS with **≥ 4 GB RAM** (2 GB or the
-cheapest "nano" tiers fail during retraining) — AWS Lightsail Mumbai,
-Hetzner, Hostinger, DigitalOcean, Oracle Cloud's free-tier Ampere A1
-(arm64/aarch64 — works fine, `server_setup.sh` installs the extra build
-tools that need), whichever your payment method covers. Region doesn't
-matter for a predictions-only tool; you don't need India's special
-static-IP tier — that rule is about *order placement*, which V1 doesn't do.
-Note the server's IP and your SSH login (e.g. `ssh ubuntu@<server-ip>`).
+Analyse reads completed daily bars stored locally. Before market close it uses
+the previous completed session. All compared stocks must have the same date.
+A missing-data message means bootstrap or refresh needs attention. A stale-date
+message means the ranking describes older market data. A low factor score is
+not a measured probability of failure, and a high score is not a success rate.
 
-**Then, on the server (as the `ubuntu` user, or whatever your image's default
-login is):**
+## Troubleshooting
 
-```bash
-# 1. One-time base install (as root — needs sudo):
-git clone https://github.com/ninda5555/NEUROX.git ~/NEUROX
-sudo ~/NEUROX/deploy/server_setup.sh
+- Setup fails: use a supported Python version and read the installation error.
+- Login needed: activate .venv and run python -m src.scripts.daily_auth.
+- Nothing to rank: run python -m src.scripts.bootstrap; inspect daily-data and
+  surveillance errors. At least 30 comparable stocks are required.
+- Dashboard fails to start: check whether another application uses port 8000.
+- No active model: expected for this product. Use Analyse, not historical Scanner.
+- Changed UI source: with Node 22 LTS installed, run npm ci and npm run build in src/ui.
+- Configuration rejected: the error names the malformed setting; correct it
+  rather than weakening validation. Unknown keys are rejected.
 
-# 2. Fill in your Fyers keys:
-nano ~/NEUROX/config.yaml
+## Optional Ubuntu server
 
-# 3. Join your private network (prints a one-time login URL):
-tailscale up
+The existing deploy/ scripts support an unprivileged dashboard and scheduler
+under systemd. Review deploy/server_setup.sh before running it on your server.
+Daily Fyers login is still required unless you explicitly configure the existing
+auto_login option with its local credential requirements.
 
-# 4. One-time history download + training (1-3 hrs, runs on the server's
-#    connection, not your phone data):
-cd ~/NEUROX && source .venv/bin/activate && ./bootstrap.sh
+Bind the dashboard to 127.0.0.1 and use Tailscale Serve for private access.
+Never use tailscale funnel to publish this dashboard. The optional identity
+header gate assumes the documented private reverse-proxy perimeter; it is not
+safe authentication for an app directly exposed to the public Internet.
+Keep config.yaml and token files private (chmod 600 on POSIX systems).
 
-# 5. Start the services — they now run forever, restart on crash/reboot,
-#    and self-retrain on schedule with zero further action from you:
-sudo systemctl start neurox-dashboard neurox-scheduler
-
-# 6. Put the dashboard on your private network only (never public):
-tailscale serve --bg http://127.0.0.1:8000
-```
-
-(Ran as a different user, or want the old dedicated-service-account layout
-back? `NEUROX_USER=neurox NEUROX_APP_DIR=/opt/neurox sudo -E ./deploy/server_setup.sh`
-— both are overridable.)
-
-**On your phone:** install the Tailscale app, sign into the *same* Tailscale
-account, then open the URL `tailscale serve status` printed on the server
-(looks like `https://<machine-name>.<your-tailnet>.ts.net`). That's your
-dashboard, reachable from anywhere, reachable by no one else — the server's
-public firewall never opens the dashboard port at all
-(`deploy/firewall.sh`).
-
-> ⚠️ **Use `tailscale serve`, never `tailscale funnel`.** `serve` exposes the
-> dashboard only inside your private tailnet. `funnel` would publish it to the
-> **public internet** — and this dashboard has no login (that's a deliberate
-> single-user trust model, see CLAUDE.md §12), so funnel would hand your
-> scanner/journal to anyone with the URL. There is no reason to ever run
-> funnel here.
->
-> **Oracle Cloud users — also close it in the VCN.** `deploy/firewall.sh` sets
-> the host firewall (ufw), but Oracle's own **VCN Security List / Network
-> Security Group** is a second, separate layer. Leave ingress on TCP **8000**
-> **closed** there (only 22/SSH open). Tailscale needs no inbound port opened
-> in the VCN — it connects outbound — so you never have to poke a hole for it.
-
-**From then on:** the scheduler retrains and rescans on its own
-(`training.retrain_schedule` in `config.yaml` — `weekly`, Saturday morning,
-by default; set it to `daily` for a retrain every trading evening instead).
-Your only remaining daily task is the ~1-minute Fyers login — SEBI requires
-a fresh one every day and nothing can remove that — **unless** you turn on
-auto-login below.
-
-### Optional: skip the daily login too (read the trade-off first)
-
-`config.yaml` has an `auto_login` switch, **off by default**:
-
-```yaml
-fyers:
-  auto_login: false      # true = server logs itself in every morning at 06:00 IST
-  totp_secret: ""        # your Fyers TOTP seed — only read when auto_login: true
-  pin: ""                # your Fyers PIN — only read when auto_login: true
-```
-
-Turning it on means your TOTP seed and PIN sit in `config.yaml` on the
-server — effectively a second factor stored alongside the first. That's a
-real trade-off: anyone who gets root on that server (or a copy of
-`config.yaml`) could log into your Fyers account. It's off by default for
-that reason. If you accept it, set `auto_login: true` and fill in
-`totp_secret`/`pin`; a 06:00 IST job then completes the same login flow
-headlessly, using undocumented-but-widely-used Fyers login endpoints (not
-part of their official API docs — if Fyers changes them, the job fails
-loudly in the logs and the manual flow above still works as a fallback).
-Leave it `false` if you're not sure — the manual paste-the-link flow takes
-about a minute and touches nothing extra.
-
-`config.yaml` is never committed or shared regardless of this setting.
-
----
-
-## What you'll see
-
-- The **dashboard** (your design) opens in your browser. Scanner, Journal,
-  Model, Universe, Search — all live, updating through the day.
-- Each morning `start` asks for the **1-minute Fyers login** (SEBI rule — a
-  fresh login every day; nobody can remove this).
-- Quiet days with an empty scanner are normal and correct — the bot only
-  shows setups that clear its honesty gate.
-
-## Notes
-- Keep the window open while trading — closing it stops the live scan (the
-  dashboard is still viewable if you re-open `start`).
-- `config.yaml` holds your keys and is **never** shared or committed.
-- Weekly on Saturday the models retrain themselves if you run
-  `python -m src.jobs.scheduler` (optional; keeps it sharp).
-- This is **V1: signals + paper trading only.** No real orders are placed —
-  that's a later, separately-gated step.
+Backups use SQLite's online backup mechanism, integrity checking, and atomic gzip
+replacement. They must come from an existing journal, not a silently created empty
+file. Check data/backups and test restoration separately before relying on them.
+No deployment has been performed by this repair; no paid server is required locally.

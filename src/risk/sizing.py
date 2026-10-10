@@ -25,7 +25,10 @@ class RiskPlan:
 def size_position(*, capital: float, risk_pct: float, entry: float, stop: float,
                   max_notional_pct: float = 20.0) -> tuple[int, bool]:
     stop_dist = abs(entry - stop)
-    if stop_dist <= 0 or entry <= 0:
+    values = (capital, risk_pct, entry, stop, max_notional_pct)
+    if (not all(math.isfinite(v) for v in values) or capital <= 0
+            or not 0 < risk_pct <= 100 or not 0 < max_notional_pct <= 100
+            or stop_dist <= 0 or entry <= 0 or stop <= 0):
         return 0, False
     qty = math.floor((capital * risk_pct / 100.0) / stop_dist)
     cap_qty = math.floor(capital * max_notional_pct / 100.0 / entry)
