@@ -5,6 +5,7 @@ one active model per mode."""
 from __future__ import annotations
 
 import json
+import math
 import pickle
 import re
 import sqlite3
@@ -123,6 +124,11 @@ def promotion_decision(conn: sqlite3.Connection, model_id: str) -> dict:
     champ = conn.execute(
         "SELECT * FROM models WHERE mode=? AND is_active=1 AND model_id != ?",
         (row["mode"], model_id)).fetchone()
+    report = json.loads(row["cv_report"])
+    mean = report.get("precision_mean")
+    if not isinstance(mean, (int, float)) or not math.isfinite(mean) or not 0 <= mean <= 1:
+        return {"decision": "held", "compared_to": champ["model_id"] if champ else None,
+                "reasons": ["challenger has no finite CV precision; nothing demonstrated"]}
     if champ is None:
         return {"decision": "promoted", "compared_to": None,
                 "reasons": ["first model for this mode — no champion to beat"]}
@@ -224,9 +230,9 @@ def load_active(conn: sqlite3.Connection, mode: str, *, require_current_space: b
             booster = MetaPipeline(booster, meta_b, blob["meta_features"])
         return (row["model_id"], booster,
                 calibrator_from_json(blob["calibrator"]), blob["feature_list"])
+    _check_feature_space(row["model_id"], None, require)
     with open(artifact.with_suffix(".pkl"), "rb") as fh:   # pre-T10 artifacts
         blob = pickle.load(fh)
-    _check_feature_space(row["model_id"], None, require)
     return row["model_id"], booster, blob["calibrator"], blob["feature_list"]
 
 

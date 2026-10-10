@@ -9,7 +9,7 @@ export default function Model({ mode }) {
                                detail={error.message ? `HTTP ${error.message}` : String(error)} />
   if (!data) return null
   const m = data.active
-  if (!m) return <div className="text-dim text-sm">No trained model for {mode} yet.</div>
+  if (!m) return <div className="text-dim text-sm">No active model for {mode}. The previous strategies failed validation. Use Analyse for the swing factor screener; it needs no trained model.</div>
 
   const withSignals = data.folds.filter((f) => f.n_signals > 0).length
   const pts = (data.calibration?.curve || [])

@@ -1,4 +1,5 @@
 export const ICONS = {
+  monitor: 'M3 12h4l3-8 4 16 3-8h4',
   predict: 'M4 18l5-6 4 3 6-8M15 7h5v5',
   scanner: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
   search: 'M10 4a6 6 0 100 12 6 6 0 000-12zM20 20l-4.2-4.2',
@@ -6,7 +7,7 @@ export const ICONS = {
   model: 'M3 12h4l3 7 4-15 3 8h4',
   universe: 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5',
 }
-export const NAV = [['predict', 'Analyse'], ['scanner', 'Scanner'], ['search', 'Search'],
+export const NAV = [['monitor', 'Monitor'], ['predict', 'Analyse'], ['scanner', 'Scanner'], ['search', 'Search'],
                     ['journal', 'Journal'], ['model', 'Model'], ['universe', 'Universe']]
 
 // Desktop/tablet side rail. On phones it is replaced by MobileNav (bottom bar).

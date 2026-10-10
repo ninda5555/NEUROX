@@ -1,5 +1,6 @@
 # Credentials & tokens — never committed (CLAUDE.md §12)
 config.yaml
+config.yaml.tmp
 .tokens/
 
 # Data & model artifacts (regenerable, large) — anchored to repo root only;
@@ -15,6 +16,7 @@ __pycache__/
 .pytest_cache/
 .venv/
 venv/
+node_modules/
 
 # Logs
 *.log

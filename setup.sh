@@ -8,8 +8,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 echo "==> Installing Python packages (this takes a few minutes)"
-pip install --quiet --upgrade pip
-pip install --quiet -r requirements.txt
+python -m pip install --require-hashes -r requirements.lock
 
 if [ ! -f config.yaml ]; then
   cp config.example.yaml config.yaml
@@ -19,5 +18,5 @@ fi
 echo ""
 echo "Setup done. Next:"
 echo "  1. Put your Fyers keys in config.yaml"
-echo "  2. Run:  ./bootstrap.sh    (first-time data download + model training)"
+echo "  2. Run:  ./bootstrap.sh    (first-time data setup)"
 echo "  3. Every morning after that:  ./start.sh"

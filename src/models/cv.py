@@ -137,6 +137,8 @@ def top_k_precision(te: pd.DataFrame, p: np.ndarray, y: np.ndarray,
 def ece(pred: np.ndarray, label: np.ndarray, bins: int = 10) -> float:
     if len(pred) == 0:
         return float("nan")
+    if np.unique(pred).size == 1:
+        return float(abs(np.mean(pred) - np.mean(label)))
     q = pd.qcut(pd.Series(pred), bins, duplicates="drop")
     df = pd.DataFrame({"p": pred, "y": label, "b": q})
     g = df.groupby("b", observed=True).agg(p=("p", "mean"), y=("y", "mean"), n=("y", "size"))

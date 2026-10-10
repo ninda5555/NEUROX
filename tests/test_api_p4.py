@@ -23,7 +23,8 @@ def test_status_carries_disclosure_and_loss_state(client):
 def test_scanner_empty_state_is_first_class(client):
     r = client.get("/api/scanner", params={"mode": "INTRADAY"}).json()
     assert r["cards"] == []
-    assert "no trade" in r["empty_reason"]
+    assert "No active model" in r["empty_reason"]
+    assert "Analyse" in r["empty_reason"]
 
 
 def test_journal_and_model_endpoints_shape(client):

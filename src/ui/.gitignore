@@ -1,2 +1,2 @@
 node_modules/
-dist/
+# dist is committed so Python-only installations receive the dashboard.

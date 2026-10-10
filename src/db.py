@@ -5,6 +5,9 @@ here — nothing time-series goes into SQLite."""
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
+from contextvars import ContextVar
+from functools import wraps
 from pathlib import Path
 
 from src.timeutil import ist_iso, now_ist
@@ -124,9 +127,36 @@ CREATE TABLE IF NOT EXISTS validation_runs (       -- T15: offline CPCV/DSR/PBO
 """
 
 
+_scoped_connections: ContextVar = ContextVar("neurox_connections", default=None)
+
+
+@contextmanager
+def connection_scope():
+    connections = []
+    token = _scoped_connections.set(connections)
+    try:
+        yield
+    finally:
+        for connection in reversed(connections):
+            connection.close()
+        _scoped_connections.reset(token)
+
+
+def scoped(fn):
+    """Close all connections opened by a synchronous request or job."""
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        with connection_scope():
+            return fn(*args, **kwargs)
+    return wrapped
+
+
 def connect(db_path: str | Path) -> sqlite3.Connection:
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
+    scope = _scoped_connections.get()
+    if scope is not None:
+        scope.append(conn)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")

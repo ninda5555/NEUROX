@@ -12,16 +12,18 @@ import Search from './pages/Search.jsx'
 import Journal from './pages/Journal.jsx'
 import Model from './pages/Model.jsx'
 import Universe from './pages/Universe.jsx'
+import Monitor from './pages/Monitor.jsx'
 
-const PAGES = { predict: Predict, scanner: Scanner, search: Search, journal: Journal, model: Model, universe: Universe }
+const PAGES = { monitor: Monitor, predict: Predict, scanner: Scanner, search: Search, journal: Journal, model: Model, universe: Universe }
 
 const PULL_TRIGGER = 64   // px of (damped) pull that arms a refresh
 const PULL_MAX = 90
 
 export default function App() {
-  const [mode, setMode] = useState('INTRADAY')
-  const [page, setPage] = useState('predict')
+  const [mode, setMode] = useState('SWING')
+  const [page, setPage] = useState('monitor')
   const [status, setStatus] = useState(null)
+  const [statusError, setStatusError] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [pull, setPull] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
@@ -29,7 +31,9 @@ export default function App() {
 
   useEffect(() => {
     let live = true
-    const tick = () => getStatus().then((s) => live && setStatus(s)).catch(() => {})
+    const tick = () => getStatus().then((s) => {
+      if (live) { setStatus(s); setStatusError(false) }
+    }).catch(() => { if (live) setStatusError(true) })
     tick()
     const id = setInterval(tick, 15000)
     return () => { live = false; clearInterval(id) }
@@ -71,8 +75,11 @@ export default function App() {
         {/* pb reserves room for the fixed MobileNav below md */}
         <div className="flex-1 min-w-0 flex flex-col pb-[70px] md:pb-0"
              onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-          <TopBar mode={mode} setMode={setMode} status={status} />
+          <TopBar mode={mode} setMode={setMode} status={status} analysis={page === 'predict'} />
           <DataHealthBanner health={status?.data_health} />
+          {statusError && <div role="alert" className="mx-4 md:mx-7 mt-3 text-sm text-rose">
+            Unable to refresh dashboard status. Any figures shown are from the last successful check.
+          </div>}
           <StatusStrip status={status} />
           {isPreview() && previewNote() && (
             <div className="mx-4 md:mx-7 mb-2 px-4 py-2 rounded-lg text-[12px] text-amberlight flex items-center gap-2"

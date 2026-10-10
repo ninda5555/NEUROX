@@ -49,7 +49,8 @@ def _safe(fn):
     @functools.wraps(fn)
     def wrapper():
         try:
-            fn()
+            with dbm.connection_scope():
+                fn()
         except Exception:
             log.exception("job %s failed — continuing (next run still scheduled)",
                           fn.__name__)
@@ -102,6 +103,9 @@ def job_intraday_scan():
     except auth.NeedsReauth:
         log.error("intraday pass skipped: no valid token — complete the "
                   "morning re-auth; the next pass picks up automatically")
+        return
+    if not conn.execute("SELECT 1 FROM models WHERE mode='INTRADAY' AND is_active=1").fetchone():
+        log.info("intraday research scan skipped: no active model; swing screener remains available")
         return
     syms = latest_included_symbols(conn)
     if not syms:
@@ -188,6 +192,9 @@ def job_heartbeat():
 def job_swing_scan():
     """15:50 IST: post-close swing signals for next-day entry."""
     cfg, conn, store = _ctx()
+    if not conn.execute("SELECT 1 FROM models WHERE mode='SWING' AND is_active=1").fetchone():
+        log.info("swing research scan skipped: no active model; use Analyse")
+        return
     cards = swing_pass(conn, store, cfg, latest_included_symbols(conn))
     log.info("swing scan emitted %d signals", len(cards))
 
@@ -244,7 +251,11 @@ def job_regime_refresh():
         return
     regime = compute_regime(store, syms)
     n = store_regime(conn, regime)
-    latest = regime.dropna(subset=["vix"]).iloc[-1]
+    usable = regime.dropna(subset=["vix"])
+    if usable.empty:
+        log.warning("regime refresh: no usable VIX history; no current regime available")
+        return
+    latest = usable.iloc[-1]
     log.info("regime refreshed: %d dates | latest %s VIX %.1f (%s) breadth %+.2f -> %s",
              n, latest.regime_date, latest.vix, latest.vix_trend,
              latest.breadth_adv_dec, latest.label)
@@ -283,7 +294,7 @@ def _retrain_both():
     from src.scripts.build_features import main as build_features
     from src.scripts.retrain import main as retrain
     build_features([])
-    retrain(["--mode", "both"])
+    retrain(["--mode", "both", "--no-activate"])
 
 
 def job_weekly_retrain():
@@ -322,7 +333,15 @@ def job_weekly_digest():
 
 
 def build_scheduler(cfg) -> BlockingScheduler:
-    s = BlockingScheduler(timezone=IST)
+    from apscheduler.executors.pool import ThreadPoolExecutor
+    from src.jobs.monitor import observe, pulse
+    # Candle writers share one worker to avoid overlapping monthly file rewrites.
+    # The cheap liveness pulse gets its own worker, independent of broker latency.
+    s = BlockingScheduler(timezone=IST,
+                          executors={"default": ThreadPoolExecutor(1), "pulse": ThreadPoolExecutor(1)},
+                          job_defaults={"coalesce": True, "max_instances": 1, "misfire_grace_time": 120})
+    s.add_job(_safe(pulse), "interval", seconds=30, executor="pulse", id="liveness")
+    s.add_job(_safe(observe), "interval", minutes=10, id="observation", next_run_time=now_ist())
     wd = "mon-fri"
     s.add_job(_safe(job_daily_auto_login),
               CronTrigger(day_of_week=wd, hour=6, minute=0, timezone=IST))
@@ -348,9 +367,13 @@ def build_scheduler(cfg) -> BlockingScheduler:
     if retrain_schedule == "daily":
         s.add_job(_safe(job_daily_retrain), CronTrigger(day_of_week=wd, hour=16, minute=45, timezone=IST))
         retrain_desc = "retrain daily 16:45"
-    else:
+    elif retrain_schedule == "weekly":
         s.add_job(_safe(job_weekly_retrain), CronTrigger(day_of_week="sat", hour=10, minute=0, timezone=IST))
         retrain_desc = "retrain Sat 10:00"
+    elif retrain_schedule == "off":
+        retrain_desc = "retraining off (research halted)"
+    else:
+        raise ValueError("training.retrain_schedule must be off, weekly or daily")
     s.add_job(_safe(job_weekly_digest), CronTrigger(day_of_week="fri", hour=16, minute=45, timezone=IST))
 
     log.info("scheduler up (IST): auto-login 06:00%s · catch-up 08:50 · "

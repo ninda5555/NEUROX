@@ -71,18 +71,18 @@ FACTORS: dict[str, float] = {
 _PHRASE = {
     "rsi_14": ("Momentum is firmer than most of the market",
                "Momentum is weaker than most of the market"),
-    "dist_20dma": ("Trading well above its 20-day average",
-                   "Trading below its 20-day average"),
-    "dist_50dma": ("Holding above its 50-day average",
-                   "Sitting below its 50-day average"),
-    "rs_nifty_20d": ("Outperforming NIFTY over the last month",
-                     "Lagging NIFTY over the last month"),
-    "gk_vol_trend": ("Volatility is settling down",
-                     "Volatility is picking up"),
-    "macd_hist": ("MACD momentum is positive",
-                  "MACD momentum is negative"),
-    "vol_zscore": ("Volume is running above its own average",
-                   "Volume is thinner than usual"),
+    "dist_20dma": ("Distance from the 20-day average ranks higher than peers",
+                   "Distance from the 20-day average ranks lower than peers"),
+    "dist_50dma": ("Distance from the 50-day average ranks higher than peers",
+                   "Distance from the 50-day average ranks lower than peers"),
+    "rs_nifty_20d": ("Relative performance against NIFTY ranks higher than peers",
+                     "Relative performance against NIFTY ranks lower than peers"),
+    "gk_vol_trend": ("Volatility trend is lower than peers",
+                     "Volatility trend is higher than peers"),
+    "macd_hist": ("MACD momentum ranks higher than peers",
+                  "MACD momentum ranks lower than peers"),
+    "vol_zscore": ("Relative volume ranks higher than peers",
+                   "Relative volume ranks lower than peers"),
 }
 
 MIN_NAMES = 30          # a cross-section thinner than this is not a ranking
@@ -104,23 +104,36 @@ def build_screen(conn: sqlite3.Connection, store: CandleStore, cfg,
     Returns a dict ready for the API. Never raises on a single bad symbol —
     a stock without enough history is skipped and counted, not fatal.
     """
-    nifty = store.read_candles("1d", NIFTY_SYMBOL)
+    if isinstance(top_n, bool) or not isinstance(top_n, int) or not 1 <= top_n <= 100:
+        raise ValueError("top_n must be an integer from 1 to 100")
+    now = now_ist()
+    def completed(d):
+        if d.empty:
+            return d
+        dates = pd.to_datetime(d["ts"]).dt.date
+        # Today's daily bar is still forming before the market close.
+        cutoff = now.date() if now.time() >= dt.time(15, 30) else now.date() - dt.timedelta(days=1)
+        return d[dates <= cutoff]
+
+    nifty = completed(store.read_candles("1d", NIFTY_SYMBOL))
     nifty_daily = nifty if not nifty.empty else None
     sector_of = {r["symbol"]: r["sector"] for r in conn.execute(
         "SELECT symbol, sector FROM instruments WHERE sector IS NOT NULL")}
 
     rows, skipped = [], 0
     asof_date = None
-    for sym in symbols:
+    for sym in sorted(set(symbols)):
         try:
-            d = store.read_candles("1d", sym)
+            d = completed(store.read_candles("1d", sym))
             if len(d) < MIN_HISTORY_BARS:
                 skipped += 1
                 continue
             f = swing_mod.build_symbol_frame(d, nifty_daily).iloc[-1]
             atr_pct = f.get("atr14_pct", np.nan)
             price = float(d["close"].iloc[-1])
-            if not np.isfinite(atr_pct) or atr_pct <= 0 or price <= 0:
+            if (not np.isfinite(atr_pct) or not np.isfinite(price)
+                    or atr_pct <= 0 or price <= 0
+                    or stopmod.swing_stop(price, atr_pct / 100 * price) <= 0):
                 skipped += 1
                 continue
             bar_date = pd.Timestamp(f["ts"]).date()
@@ -132,18 +145,28 @@ def build_screen(conn: sqlite3.Connection, store: CandleStore, cfg,
                    "bar_date": bar_date.isoformat()}
             for c in FACTORS:
                 v = f.get(c, np.nan)
-                rec[c] = None if pd.isna(v) else float(v)
+                rec[c] = float(v) if pd.notna(v) and np.isfinite(v) else None
+            if nifty.empty or pd.Timestamp(nifty["ts"].iloc[-1]).date() < bar_date:
+                rec["rs_nifty_20d"] = None
             rows.append(rec)
         except Exception:
             skipped += 1
             continue
 
+    # A cross-section is one session, not a mix of latest prices from
+    # different days. Count older names as skipped instead of hiding them
+    # under the newest name's asof timestamp.
+    if rows:
+        fresh = [r for r in rows if r["bar_date"] == asof_date.isoformat()
+                 and sum(r[c] is not None for c in FACTORS) >= 4]
+        skipped += len(rows) - len(fresh)
+        rows = fresh
     if len(rows) < MIN_NAMES:
         return {"mode": "SWING", "asof": None, "generated_at":
                 now_ist().isoformat(timespec="seconds"),
                 "n_screened": len(rows), "n_skipped": skipped, "rows": [],
                 "empty_reason":
-                    f"Only {len(rows)} stocks had enough daily history to rank "
+                    f"Only {len(rows)} stocks had enough daily history and factors on the same session to rank "
                     f"(need {MIN_NAMES}). This is a data problem, not a market "
                     "call — check that the daily backfill has run."}
 
@@ -165,7 +188,7 @@ def build_screen(conn: sqlite3.Connection, store: CandleStore, cfg,
         df[f"_pct_{c}"] = P[c]
     # a stock scored on fewer than half the factors is not comparable
     df = df[df["_n_factors"] >= 4].copy()
-    df = df.sort_values("_score", ascending=False).reset_index(drop=True)
+    df = df.sort_values(["_score", "symbol"], ascending=[False, True]).reset_index(drop=True)
     df["_rank"] = np.arange(1, len(df) + 1)
 
     total = len(df)
@@ -207,6 +230,7 @@ def build_screen(conn: sqlite3.Connection, store: CandleStore, cfg,
             "qty": qty, "at_risk": round(at_risk, 0),
             "risk_pct_of_capital": round(at_risk / cfg["risk.capital"] * 100, 2),
             "position_capped": capped,
+            "position_cap_pct": cfg["risk.max_position_notional_pct"],
             "drivers": drivers[:5], "all_drivers": drivers,
             "holding": stopmod.HOLDING_SWING,
             "gap_note": stopmod.GAP_NOTE_SWING,
@@ -228,6 +252,7 @@ def screen_is_stale(asof: str | None, max_age_days: int = 5) -> bool:
         return True
     try:
         d = dt.date.fromisoformat(asof)
-    except ValueError:
+    except (ValueError, TypeError):
         return True
-    return (now_ist().date() - d).days > max_age_days
+    age = (now_ist().date() - d).days
+    return age < 0 or age > max_age_days

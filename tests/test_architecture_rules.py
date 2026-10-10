@@ -18,7 +18,7 @@ def test_fyers_sdk_only_imported_inside_fyers_package():
     for p in _py_files(SRC):
         if (SRC / "fyers") in p.parents:
             continue
-        text = p.read_text()
+        text = p.read_text(encoding="utf-8")
         if re.search(r"^\s*(import|from)\s+fyers_apiv3", text, re.M):
             offenders.append(str(p.relative_to(ROOT)))
     assert not offenders, f"fyers_apiv3 imported outside src/fyers/: {offenders}"
@@ -30,7 +30,7 @@ def test_no_accuracy_language_in_code_or_docs():
     banned = re.compile(r"accurac|win[- ]rate guarantee|proven returns", re.I)
     offenders = []
     for p in _py_files(SRC) + [ROOT / "README.md"]:
-        for i, line in enumerate(p.read_text().splitlines(), 1):
+        for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
             if banned.search(line):
                 offenders.append(f"{p.relative_to(ROOT)}:{i}: {line.strip()}")
     assert not offenders, "banned language found:\n" + "\n".join(offenders)
@@ -42,7 +42,7 @@ def test_no_naive_datetime_now_in_src():
     bad_call = re.compile(r"datetime\.now\(\)|datetime\.utcnow\(|\bdate\.today\(")
     offenders = []
     for p in _py_files(SRC):
-        for i, line in enumerate(p.read_text().splitlines(), 1):
+        for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
             if bad_call.search(line):
                 offenders.append(f"{p.relative_to(ROOT)}:{i}: {line.strip()}")
     assert not offenders, "naive datetime usage:\n" + "\n".join(offenders)
@@ -58,7 +58,7 @@ def test_order_placement_stays_unwired():
     """§17.8: V1 places no orders. Static grep for order-placement code."""
     offenders = []
     for p in _py_files(SRC):
-        if ORDER_WORDS.search(p.read_text()):
+        if ORDER_WORDS.search(p.read_text(encoding="utf-8")):
             offenders.append(str(p.relative_to(ROOT)))
     assert not offenders, f"order-placement code found (V2-gated): {offenders}"
 

@@ -1,100 +1,57 @@
-# NSE Trading Assistant
+# NEUROX
 
-> **Research outcome (05-Aug-2026): both trading modes were tested and neither has a tradeable
-> edge. No model is active and none should be activated. Read [CLAUDE.md §0](CLAUDE.md) before
-> using anything here.** Intraday has no cross-sectional edge; swing has measurable ranking skill
-> that does not convert into a holdable portfolio. Retraining will not change this. The
-> infrastructure below is sound and reusable — the strategy inside it is not.
+NSE swing-stock factor screener, market-data dashboard, and research/paper journal.
+The Analyse screen ranks stocks using seven measured technical factors. A score
+is a relative factor score out of 100, not a probability of making money.
 
-A decision-support trading assistant for NSE (Indian) equities. It scans a
-liquidity-filtered universe of all tradable NSE stocks, generates ML-scored
-setups in two modes (Intraday and Swing), explains every signal in plain
-English via SHAP, sizes positions by volatility, journals everything with full
-context, and tracks real outcomes.
+## Current condition
 
-**V1 = signals + paper trading only. No live order placement.**
+The original intraday and swing ML strategies failed validation. They remain
+research code, and a fresh installation has no active model. No live-order
+placement is implemented. The detailed measurements are preserved in CLAUDE.md,
+section 0. Passing software tests does not establish a profitable strategy.
 
-> This is an independent-developer analytics tool, not an institutional
-> trading system. It estimates probabilities; it does not predict the future.
-> Most retail intraday traders lose money (SEBI studies). Not investment
-> advice.
+The runnable product is the swing screener. It uses stored, completed daily bars
+from one session, skips incomplete or invalid names, displays the data date and
+staleness, and explains each factor relative to peers. Entry, stop, target and
+quantity are individual hypothetical levels; the shortlist is not a combined
+portfolio or a recommendation to buy every name.
 
-**`CLAUDE.md` is the single source of truth** for architecture, scope, and
-rules. Read it before changing anything. The UI design specification lives in
-`design/` (Claude Design handoff bundle).
+## Start on Windows
 
-## Status
+Use Python 3.11 or 3.12. Run setup.bat once, edit the generated config.yaml with
+your Fyers app credentials, then run bootstrap.bat for the first data download.
+Run start.bat on subsequent days and open Analyse in the dashboard.
 
-| Phase | Scope | Status |
-|---|---|---|
-| P0 | Foundations: config, Fyers client + rate limiter, daily auth, symbol master, universe pipeline, backfill | ✅ Done (live-verified) |
-| P1 | Features & data: candle store, feature pipelines, tradability masks, regime table, IC report | ✅ Done |
-| P2 | Models: LightGBM + isotonic calibration + purged walk-forward CV + SHAP sentences + registry | ✅ Done (red flags active) |
-| P3 | Signals & risk: emission gate, scanner, risk engine, journal + outcomes, paper trading | ✅ Done |
-| P4 | UI: React dashboard per `design/` | ✅ Done |
-| P5 | Shadow operation: ≥ 4 weeks paper trading, live-vs-CV divergence tracking | ▶ Infra ready — clock starts first live session |
-| V2 | Order placement — **gated on P5 exit criteria** | Deliberately unwired |
+For macOS/Linux, use setup.sh, bootstrap.sh, and start.sh. See SETUP.md for commands.
+The launcher starts the dashboard and scheduled data maintenance. Keep it running
+if you want evening refresh and backups. Data collection requires a valid Fyers
+login; credentials and tokens stay in ignored local files.
 
-## Setup
+## Development and verification
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp config.example.yaml config.yaml   # fill in Fyers credentials (gitignored)
+python -m pip install --require-hashes -r requirements.lock
+python -m pytest -q
+cd src/ui
+npm ci
+npm audit --audit-level=high
+npm run build
 ```
 
-Daily morning auth (SEBI-mandated daily re-authentication):
+Frontend development requires Node 20.19+ or 22.12+; Node 22 LTS is the CI target.
+The prebuilt dashboard is included, so end users do not need Node. CI tests Python
+3.11 and 3.12 on Windows and Linux, and installs/audits/builds the frontend.
 
-```bash
-python -m src.scripts.daily_auth
-```
+## Research controls
 
-Build the universe and backfill history:
+training.retrain_schedule defaults to off. Enabling weekly or daily schedules
+creates research artifacts without activating them. Manual retraining also
+registers only by default. --activate explicitly invokes the historical promotion
+gate; --force-activate records an override. Neither option demonstrates profitability.
+Do not activate the rejected strategy for trading based on its test-suite status.
 
-```bash
-python -m src.scripts.build_universe
-python -m src.scripts.backfill --tf both
-```
-
-## Network endpoints used
-
-| Host | Purpose |
-|---|---|
-| `public.fyers.in` | Symbol master CSV (no auth) |
-| `api.fyers.in` / `api-t1.fyers.in` | Fyers API v3 (auth, history, quotes) |
-| `www.nseindia.com`, `nsearchives.nseindia.com` | NSE surveillance lists (GSM/ASM) |
-
-All Fyers REST calls go through a shared rate limiter (10/s, 200/min,
-100,000/day). Time is IST everywhere; a naive datetime is a bug.
-
-## Daily shadow-operation runbook (P5)
-
-Each trading morning (takes ~2 minutes):
-
-```bash
-python -m src.scripts.daily_auth        # SEBI daily re-auth (paste auth_code)
-python -m src.scripts.shadow            # live session: WS -> bars -> signals
-```
-
-Keep running once (any time): the off-session automation and the dashboard:
-
-```bash
-python -m src.jobs.scheduler            # swing scan 15:50 · top-up 16:20 ·
-                                        # universe 20:30 · retrain Sat 10:00
-python -m uvicorn src.api.app:app --port 8000   # dashboard at localhost:8000
-```
-
-P5 exit criteria (gates V2 order placement): >= 4 weeks of paper operation
-with live-vs-CV divergence tracked and within bounds. The order module stays
-unwired until then.
-
-## Daily use — one command
-
-```bash
-python -m src.run
-```
-
-That is the entire daily routine: it checks the token (prompts the ~1-minute
-Fyers login only if needed), opens the dashboard at http://localhost:8000, and
-runs the all-day live scanner. Watch the dashboard; qualifying setups appear as
-cards, an empty scanner means "no trade" (the system working).
+The research library includes purged cross-validation, IC analysis, calibration,
+barrier outcome accounting, risk sizing, drift monitoring, and paper settlement.
+Historical architecture and measured limitations are in CLAUDE.md. Current setup
+instructions are in SETUP.md. Contributor instructions are in AGENTS.md.

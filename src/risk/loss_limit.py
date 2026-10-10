@@ -44,7 +44,7 @@ class DayRiskTracker:
             state = "halted"
         elif pnl <= limit * self.warn_frac:
             state = "warning"
-        return {"state": state, "day_pnl": pnl, "limit": limit,
+        return {"state": state, "day_pnl": pnl, "limit": limit, "limit_pct": self.limit_pct,
                 "pct_of_capital": pnl / self.capital * 100.0}
 
     def allows_new_intraday(self) -> bool:

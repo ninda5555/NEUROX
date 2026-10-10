@@ -42,7 +42,7 @@ labels:                   # CLAUDE.md §5
   min_barrier_atr_pct: 0.30   # floor intraday barrier/stop ATR at 0.30% of price
 
 training:                 # CLAUDE.md §6.2, deploy/ scheduler
-  retrain_schedule: "weekly"  # "weekly" (Sat 10:00 IST, default) or "daily"
+  retrain_schedule: "off"  # rejected strategy: off by default; weekly/daily for research only
                                # (~16:45 IST Mon-Fri, after the candle top-up)
   time_decay_half_life_days: 0   # T9, OFF: >0 halves a training sample's
                                   # weight per N days of age (e.g. 60)

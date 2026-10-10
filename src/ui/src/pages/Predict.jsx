@@ -29,7 +29,7 @@ function Card({ r }) {
             <span className="text-[10.5px] text-soft px-2 py-0.5 rounded-md bg-white/5 border border-white/[0.08]">{r.sector || 'NSE'}</span>
           </div>
           <div className="mt-2 text-[11.5px] text-dim">
-            Factor rank <span className="font-mono text-ink">{fmt(r.score_pct, 1)}</span> — ranked
+            Factor score <span className="font-mono text-ink">{fmt(r.score_pct, 1)} / 100</span> — ranked
             {' '}<span className="font-mono text-ink">{r.rank}</span> of {fmtIn(r.percentile_of)} screened
           </div>
         </div>
@@ -66,13 +66,13 @@ function Card({ r }) {
       {r.position_capped && (
         <div className="mx-[18px] mb-2 text-[10.5px] text-amberlight px-[9px] py-[3px] rounded-md inline-block"
              style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.22)' }}>
-          Position capped at 20% of capital
+          Position capped at {fmt(r.position_cap_pct ?? 20, 1)}% of capital
         </div>
       )}
 
       <button onClick={() => setOpen(!open)}
               className="tab-btn w-full border-0 bg-white/[0.02] border-t border-white/[0.06] cursor-pointer py-3 font-sans text-xs text-softer">
-        {open ? 'Hide all factors ▲' : 'All 7 factors · levels detail ▼'}
+        {open ? 'Hide all factors ▲' : `All ${r.all_drivers.length} available factors · levels detail ▼`}
       </button>
       {open && (
         <div className="px-[18px] pt-4 pb-[18px] border-t border-white/5" style={{ background: 'rgba(0,0,0,0.2)' }}>
@@ -163,8 +163,8 @@ export default function Predict() {
       {data?.stale && !loading && (
         <div className="mb-4 px-4 py-3 rounded-xl text-[12.5px]"
              style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.28)', color: '#FB7185' }}>
-          The newest daily bar is {data.asof} — this ranking is describing a market that has moved on.
-          Run the daily backfill before relying on it.
+          {data.asof ? `Daily bars end on ${data.asof}. Refresh the daily backfill before using this ranking.`
+            : 'No comparable daily data is available. Complete the first-time data setup before analysing.'}
         </div>
       )}
 
@@ -185,7 +185,7 @@ export default function Predict() {
         <div className="mt-6 px-10 py-16 text-center bg-white/[0.02] border border-dashed border-white/[0.1] rounded-[18px]">
           <div className="text-[15px] font-semibold mb-2">Press “Analyse the market”</div>
           <div className="text-[13px] text-dim max-w-[460px] mx-auto leading-relaxed">
-            The scan reads live daily bars for every stock in the watched universe and ranks them.
+            The scan reads stored, completed daily bars for the watched universe and ranks stocks from the same session.
           </div>
         </div>
       )}

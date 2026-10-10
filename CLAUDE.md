@@ -1,5 +1,13 @@
 # CLAUDE.md — NSE Trading Assistant (single source of truth)
 
+> Maintenance update, 10-Oct-2026: README.md and SETUP.md describe the current
+> runnable product. This file preserves the original architecture and research
+> record; older roadmap and operational claims below are historical. Setup now
+> prepares a swing factor screener without ML training. Scheduled retraining is
+> off by default, and manual retraining registers research artifacts without
+> activation unless the operator explicitly requests it. Daily maintenance
+> and the Analyse screen remain available without an active model.
+
 Read this file before writing any code or designing any screen. Claude Code and Claude Design both treat this document as authoritative. If a decision here conflicts with an ad-hoc instruction, ask before deviating; if it conflicts with reality (an API changed), update this file first, then the code.
 
 ## 0. Research outcome (05-Aug-2026): both modes tested, no tradeable edge found — READ THIS FIRST
